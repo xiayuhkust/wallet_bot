@@ -4,6 +4,7 @@ const { connectToDatabase } = require("./db");
 const { handlePrivateChannelMessage } = require("./private_channel_service"); // 引入服务逻辑
 const { getWalletWelcomeTemplate } = require("./embedding_templates");
 const { registerNewWallet } = require("./walletController"); // 假设 wallet.js 处理钱包逻辑
+const { checkWallet } = require("../models/wallet");
 
 // 从 .env 文件加载配置
 const TOKEN = process.env.TagfusionBotToken;

@@ -1,4 +1,4 @@
-const { client } = require("../src/db");
+const { getClient } = require("../src/db");
 
 /**
  * 检查用户是否已有钱包

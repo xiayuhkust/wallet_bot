@@ -1,6 +1,6 @@
 require("dotenv").config();
 const { Client, GatewayIntentBits, PermissionsBitField, ChannelType } = require("discord.js");
-const { connectToDatabase } = require("./db");
+const { connectToDatabase, getClient } = require("./db");
 const { handlePrivateChannelMessage } = require("./private_channel_service"); // 引入服务逻辑
 const { getWalletWelcomeTemplate } = require("./embedding_templates");
 const { registerNewWallet } = require("./walletController"); // 假设 wallet.js 处理钱包逻辑
@@ -18,6 +18,26 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
   ],
 });
+
+// 初始化数据库并启动机器人
+(async () => {
+  try {
+    console.log("[INFO] Initializing database connection...");
+    await connectToDatabase();
+
+    // 测试数据库连接
+    const client = getClient();
+    const testResult = await client.query("SELECT NOW() AS current_time");
+    console.log(`[INFO] Database connection successful. Current time: ${testResult.rows[0].current_time}`);
+
+    console.log("[INFO] Starting bot login...");
+    await discordClient.login(TOKEN);
+    console.log("[INFO] Bot logged in successfully.");
+  } catch (error) {
+    console.error("[ERROR] Failed to initialize bot or database:", error);
+    process.exit(1); // 如果初始化失败，则退出进程
+  }
+})();
 
 // 创建一个 Map 用于存储用户和他们的私密频道信息
 const userChannels = new Map();

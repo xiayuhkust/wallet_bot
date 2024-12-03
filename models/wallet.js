@@ -7,6 +7,10 @@ const { client } = require("../src/db");
  */
 async function checkWallet(userId) {
   try {
+    const client = getClient(); // 使用共享的 client
+    if (!client) {
+      throw new Error("Database connection is not initialized.");
+    }
     const result = await client.query("SELECT * FROM discord_wallets WHERE user_id = $1", [userId]);
     return result.rows[0] || null;
   } catch (error) {

@@ -7,11 +7,12 @@ const { getClient } = require("../src/db");
  */
 async function checkWallet(userId) {
   try {
-    const client = getClient(); // 使用共享的 client
+    const client = getClient(); // 使用共享的数据库客户端
     if (!client) {
       throw new Error("Database connection is not initialized.");
     }
-    const result = await client.query("SELECT * FROM discord_wallets WHERE user_id = $1", [userId]);
+    const query = "SELECT * FROM discord_wallets WHERE user_id = $1";
+    const result = await client.query(query, [userId]);
     return result.rows[0] || null;
   } catch (error) {
     console.error("[ERROR] Failed to check wallet:", error);
@@ -24,9 +25,14 @@ async function checkWallet(userId) {
  * @param {string} userId Discord 用户 ID
  * @param {string} address 钱包地址
  * @param {string} encryptedKey 加密的私钥
+ * @returns {Promise<Object>} 返回新创建的钱包记录
  */
 async function createWallet(userId, address, encryptedKey) {
   try {
+    const client = getClient(); // 确保获取数据库客户端
+    if (!client) {
+      throw new Error("Database connection is not initialized.");
+    }
     const query = `
       INSERT INTO discord_wallets (user_id, address, encrypted_key, created_at, updated_at)
       VALUES ($1, $2, $3, NOW(), NOW())
@@ -45,9 +51,14 @@ async function createWallet(userId, address, encryptedKey) {
  * 更新钱包的加密私钥
  * @param {string} userId Discord 用户 ID
  * @param {string} newEncryptedKey 新的加密私钥
+ * @returns {Promise<Object>} 返回更新后的钱包记录
  */
 async function updateWalletKey(userId, newEncryptedKey) {
   try {
+    const client = getClient(); // 确保获取数据库客户端
+    if (!client) {
+      throw new Error("Database connection is not initialized.");
+    }
     const query = `
       UPDATE discord_wallets
       SET encrypted_key = $1, updated_at = NOW()

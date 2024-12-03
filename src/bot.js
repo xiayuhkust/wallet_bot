@@ -1,8 +1,9 @@
 require("dotenv").config();
-const { Client, GatewayIntentBits } = require("discord.js");
-const { DirectSecp256k1HdWallet } = require("@cosmjs/proto-signing");
-const { connectToDatabase, disconnectFromDatabase } = require("./db");
-
+const { Client, GatewayIntentBits, PermissionsBitField, ChannelType } = require("discord.js");
+const { connectToDatabase } = require("./db");
+const { handlePrivateChannelMessage } = require("./private_channel_service"); // 引入服务逻辑
+const { getWalletWelcomeTemplate } = require("./embedding_templates");
+const { registerNewWallet } = require("./walletController"); // 假设 wallet.js 处理钱包逻辑
 
 // 从 .env 文件加载配置
 const TOKEN = process.env.TagfusionBotToken;
@@ -10,74 +11,354 @@ const TOKEN = process.env.TagfusionBotToken;
 // 初始化客户端
 const client = new Client({
   intents: [
-    GatewayIntentBits.Guilds,         // 访问服务器信息
-    GatewayIntentBits.GuildMessages, // 监听服务器消息
-    GatewayIntentBits.MessageContent, // 读取消息内容
-    GatewayIntentBits.GuildMembers,  // 读取成员
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
   ],
 });
 
-async function run() {
-  const client = await connectToDatabase();
-  
-}
+// 创建一个 Map 用于存储用户和他们的私密频道信息
+const userChannels = new Map();
 
-run().catch((err) => console.error("Error running example:", err));
+// 确保 FrontDesk 类别存在
+async function ensureFrontDeskCategory(guild) {
+  const categoryName = "FrontDesk";
 
-async function createTuraWallet() {
-  try {
-    console.log("[INFO] Generating new Tura wallet...");
-    const wallet = await DirectSecp256k1HdWallet.generate(24, { prefix: "tura" });
-    const [account] = await wallet.getAccounts();
-    console.log("[SUCCESS] Wallet generated successfully.");
-    console.log(`[DEBUG] Address: ${account.address}`);
-    return {
-      address: account.address,
-      mnemonic: wallet.mnemonic,
-    };
-  } catch (error) {
-    console.error("[ERROR] Failed to generate wallet:", error);
-    throw new Error("Failed to generate wallet");
+  const existingCategory = guild.channels.cache.find(
+    (channel) => channel.type === ChannelType.GuildCategory && channel.name === categoryName
+  );
+
+  if (existingCategory) {
+    return existingCategory;
   }
+
+  // 创建 FrontDesk 类别
+  const newCategory = await guild.channels.create({
+    name: categoryName,
+    type: ChannelType.GuildCategory,
+  });
+
+  console.log(`[INFO] Created FrontDesk category.`);
+  return newCategory;
+}
+//消息是否来自私密频道
+function isMessageFromValidChannel(userId, channelId) {
+  const userChannelId = userChannels.get(userId);
+  return userChannelId === channelId;
 }
 
 client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isCommand()) return;
-
-  if (interaction.commandName === "register-wallet") {
-    console.log(`[INFO] Handling command: /register-wallet from user ${interaction.user.tag}`);
-    try {
-      // 生成钱包
-      const wallet = await createTuraWallet();
-
-      // 私信用户
+  if (interaction.isCommand()) {
+    if (interaction.commandName === "wallet") {
+      console.log(`[INFO] Handling command: /wallet from user ${interaction.user.tag}`);
+      const guild = interaction.guild;
+      const user = interaction.user;
+  
+      if (!guild) {
+        await interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+        return;
+      }
+  
+      // 检查是否已有频道存在
+      if (userChannels.has(user.id)) {
+        const existingChannelId = userChannels.get(user.id);
+        const existingChannel = guild.channels.cache.get(existingChannelId);
+        if (existingChannel) {
+          await interaction.reply({
+            content: `You already have a private channel: <#${existingChannel.id}>`,
+            ephemeral: true,
+          });
+          return;
+        } else {
+          userChannels.delete(user.id); // 清理无效的映射
+        }
+      }
+  
       try {
-        console.log(`[INFO] Sending wallet details to user ${interaction.user.tag}...`);
-        await interaction.user.send(
-          `🎉 **Your Tura Wallet is ready!**\n\n**Address:** \`${wallet.address}\`\n**Mnemonic:** \`${wallet.mnemonic}\`\n\n⚠️ **Please save this mnemonic securely! Do not share it with anyone.**`
+        // 确保 FrontDesk 类别存在
+        const category = await ensureFrontDeskCategory(guild);
+  
+        // 检查类别下的频道数量
+        const channelsInCategory = guild.channels.cache.filter(
+          (channel) => channel.parentId === category.id && channel.type === ChannelType.GuildText
         );
-        console.log(`[SUCCESS] Wallet details sent to user ${interaction.user.tag} successfully.`);
-        await interaction.reply({
-          content: "Your wallet has been created! Check your DM for details.",
-          ephemeral: true,
+  
+        if (channelsInCategory.size >= 200) {
+          await interaction.reply({
+            content: "The system is busy. Please try again later.",
+            ephemeral: true,
+          });
+          return;
+        }
+  
+        // 创建私密频道
+        const channelName = `wallet-${user.username}`;
+        const privateChannel = await guild.channels.create({
+          name: channelName,
+          type: ChannelType.GuildText,
+          parent: category.id, // 将频道放入 FrontDesk 类别下
+          permissionOverwrites: [
+            {
+              id: guild.roles.everyone.id, // 禁止所有用户查看
+              deny: [PermissionsBitField.Flags.ViewChannel],
+            },
+            {
+              id: user.id, // 允许目标用户查看和发送消息
+              allow: [
+                PermissionsBitField.Flags.ViewChannel,
+                PermissionsBitField.Flags.SendMessages,
+                PermissionsBitField.Flags.ReadMessageHistory,
+              ],
+            },
+            {
+              id: guild.members.me.id, // 允许机器人访问
+              allow: [
+                PermissionsBitField.Flags.ViewChannel,
+                PermissionsBitField.Flags.SendMessages,
+                PermissionsBitField.Flags.ReadMessageHistory,
+                PermissionsBitField.Flags.ManageChannels,
+              ],
+            },
+          ],
         });
-      } catch (dmError) {
-        console.error("[ERROR] Failed to send DM to user:", dmError);
+  
+        // 保存用户频道映射
+        userChannels.set(user.id, privateChannel.id);
+        // 回复用户并提供私密频道链接
+      await interaction.reply({
+        content: `Your private channel has been created successfully! You can access it here: <#${privateChannel.id}>`,
+        ephemeral: true, // 消息仅用户可见
+      });
+        // 获取嵌入模板
+        const { embed, buttons } = getWalletWelcomeTemplate(user.username);
+  
+        // 在私密频道发送嵌入消息
+        await privateChannel.send({
+          embeds: [embed],
+          components: [buttons],
+        });
+  
+        console.log(`[INFO] Sent wallet welcome embed to channel: ${privateChannel.name}`);
+  
+        // 5分钟后自动删除无活动频道
+        let activityTimeout = setTimeout(async () => {
+          try {
+            if (userChannels.has(user.id)) {
+              await privateChannel.delete();
+              userChannels.delete(user.id);
+              console.log(`[INFO] Deleted inactive channel: ${privateChannel.name}`);
+            }
+          } catch (error) {
+            console.error(`[ERROR] Failed to delete inactive channel: ${error.message}`);
+          }
+        }, 5 * 60 * 1000);
+  
+        // 监听消息活动，重置计时器
+        const collector = privateChannel.createMessageCollector({ time: 5 * 60 * 1000 });
+        collector.on("collect", (message) => {
+          if (message.author.id === user.id) {
+            clearTimeout(activityTimeout); // 重置计时器
+            activityTimeout = setTimeout(async () => {
+              try {
+                if (userChannels.has(user.id)) {
+                  await privateChannel.delete();
+                  userChannels.delete(user.id);
+                  console.log(`[INFO] Deleted inactive channel: ${privateChannel.name}`);
+                }
+              } catch (error) {
+                console.error(`[ERROR] Failed to delete inactive channel: ${error.message}`);
+              }
+            }, 5 * 60 * 1000);
+          }
+        });
+  
+        collector.on("end", () => {
+          console.log(`[INFO] Stopped monitoring activity for channel: ${privateChannel.name}`);
+        });
+      } catch (error) {
+        console.error("[ERROR] Failed to create private channel:", error);
         await interaction.reply({
-          content: "Failed to send you a DM. Please check your DM settings and try again.",
+          content: "An error occurred while creating your private channel. Please try again later.",
           ephemeral: true,
         });
       }
-    } catch (error) {
-      console.error("[ERROR] Failed to handle /register-wallet command:", error);
-      await interaction.reply({
-        content: "An error occurred while generating your wallet. Please try again later.",
-        ephemeral: true,
-      });
     }
+    else if (interaction.isCommand() && interaction.commandName === "pw") {
+      const userId = interaction.user.id;
+      const channelId = interaction.channel.id;
+    
+      // 检查是否在用户的私密频道中
+      if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
+        await interaction.reply({
+          content: "This command can only be used in your private channel.",
+          ephemeral: true,
+        });
+        return;
+      }
+    
+      // 检查用户是否已有钱包
+      const existingWallet = await checkWallet(userId);
+      if (existingWallet) {
+        await interaction.reply({
+          content: "You already have a wallet. Use `/change-pw` to update your password.",
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // 获取用户输入的密码
+      const password = interaction.options.getString("password");
+    
+      // 验证密码强度
+      if (password.length < 6) {
+        await interaction.reply({
+          content: "Your password must be at least 6 characters long. Please try again.",
+          ephemeral: true,
+        });
+        return;
+      }
+    
+      // 将密码传递到创建钱包逻辑
+      try {
+        const wallet = await registerNewWallet(interaction.user.id, interaction.user.username, password);
+    
+        // 私信发送钱包信息
+        await interaction.user.send(
+          `🎉 **Your Tura Wallet has been created!**\n\n` +
+          `**Address:** \`${wallet.address}\`\n` +
+          `**Mnemonic:** \`${wallet.mnemonic}\`\n\n` +
+          `⚠️ **Please save this mnemonic securely! Do not share it with anyone.**`
+        );
+    
+        await interaction.reply({
+          content: "Your wallet has been created! Please check your DM for details.",
+          ephemeral: true,
+        });
+        console.log(`[SUCCESS] Wallet details sent to ${interaction.user.tag}`);
+      } catch (error) {
+        console.error(`[ERROR] Failed to create wallet: ${error.message}`);
+        await interaction.reply({
+          content: "An error occurred while creating your wallet. Please try again later.",
+          ephemeral: true,
+        });
+      }
+    }   
+    else if (interaction.isCommand() && interaction.commandName === "change-pw") {
+      const oldPassword = interaction.options.getString("old_pw");
+      const newPassword = interaction.options.getString("new_pw");
+    
+      // 验证密码并更新钱包逻辑
+      // ...
+    }
+  } else if (interaction.isButton()){
+      // 获取当前用户和频道信息
+      const userId = interaction.user.id;
+      const channelId = interaction.channel.id;
+
+      // 验证按钮交互是否在用户的私密频道中
+      if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
+        await interaction.reply({
+          content: "You are not authorized to interact in this channel.",
+          ephemeral: true, // 仅对当前用户显示
+        });
+        return; // 停止进一步处理
+      }
+
+      if (interaction.customId === "create_wallet") {
+        console.log(`[INFO] User ${interaction.user.tag} clicked Create Wallet`);
+      
+        await interaction.reply({
+          content:
+            "To create your wallet, please use the `/pw` command followed by your desired password. Your password will be used to secure your wallet. Example:\n\n`/pw mySecurePassword123`",
+          ephemeral: true,
+        });
+      }
+
+      else if (interaction.commandName === "change-pw") {
+        const userId = interaction.user.id;
+        const channelId = interaction.channel.id;
+      
+        // 验证命令是否在用户的私密频道中
+        if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
+          await interaction.reply({
+            content: "This command can only be used in your private channel.",
+            ephemeral: true,
+          });
+          return;
+        }
+      
+        // 获取用户输入的旧密码和新密码
+        const oldPassword = interaction.options.getString("old_pw");
+        const newPassword = interaction.options.getString("new_pw");
+      
+        // 验证新密码强度
+        if (newPassword.length < 6) {
+          await interaction.reply({
+            content: "Your new password must be at least 6 characters long. Please try again.",
+            ephemeral: true,
+          });
+          return;
+        }
+      
+        try {
+          // 获取用户的钱包信息
+          const wallet = await checkWallet(userId);
+          if (!wallet) {
+            await interaction.reply({
+              content: "No wallet found for your account. Please create one first.",
+              ephemeral: true,
+            });
+            return;
+          }
+      
+          // 解密助记词以验证旧密码
+          let mnemonic;
+          try {
+            mnemonic = decryptData(wallet.encrypted_key, oldPassword);
+          } catch (error) {
+            await interaction.reply({
+              content: "Your current password is incorrect. Please try again.",
+              ephemeral: true,
+            });
+            return;
+          }
+      
+          // 用新密码重新加密助记词
+          const newEncryptedKey = encryptData(mnemonic, newPassword);
+      
+          // 更新数据库中的加密助记词
+          await updateWalletKey(userId, newEncryptedKey);
+      
+          await interaction.reply({
+            content: "Your wallet password has been updated successfully!",
+            ephemeral: true,
+          });
+          console.log(`[INFO] User ${interaction.user.tag} updated their wallet password.`);
+        } catch (error) {
+          console.error(`[ERROR] Failed to update password for user ${interaction.user.tag}:`, error);
+          await interaction.reply({
+            content: "An error occurred while updating your password. Please try again later.",
+            ephemeral: true,
+          });
+        }
+      }      
+
   }
 });
 
+/*
+// 监听私密频道中的消息
+client.on("messageCreate", (message) => {
+  if (message.author.bot) return;
+
+  // 验证消息是否来自有效的私密频道
+  if (!isMessageFromValidChannel(message.author.id, message.channel.id)) {
+    return; // 忽略其他频道的消息
+  }
+  handlePrivateChannelMessage(message); // 委托给服务文件
+});
+*/
 // 登录机器人
 client.login(TOKEN).then(() => {
   console.log("[INFO] Bot logged in successfully.");

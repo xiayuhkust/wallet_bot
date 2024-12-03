@@ -1,21 +1,66 @@
-const mongoose = require("mongoose");
+const { client } = require("../src/db");
 
-// 定义 Wallet Schema
-const walletSchema = new mongoose.Schema({
-  user_id: { type: String, required: true, unique: true }, // Discord 用户的唯一 ID
-  address: { type: String, required: true }, // 用户钱包地址
-  encrypted_key: { type: String, required: true }, // 加密存储的私钥
-  created_at: { type: Date, default: Date.now }, // 钱包创建时间
-  updated_at: { type: Date, default: Date.now }, // 最近一次更新钱包的时间
-});
+/**
+ * 检查用户是否已有钱包
+ * @param {string} userId Discord 用户 ID
+ * @returns {Promise<Object|null>} 返回钱包记录或 null
+ */
+async function checkWallet(userId) {
+  try {
+    const result = await client.query("SELECT * FROM discord_wallets WHERE user_id = $1", [userId]);
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error("[ERROR] Failed to check wallet:", error);
+    throw new Error("Database query failed");
+  }
+}
 
-// 中间件：在保存时自动更新 `updated_at`
-walletSchema.pre("save", function (next) {
-  this.updated_at = Date.now();
-  next();
-});
+/**
+ * 创建新钱包
+ * @param {string} userId Discord 用户 ID
+ * @param {string} address 钱包地址
+ * @param {string} encryptedKey 加密的私钥
+ */
+async function createWallet(userId, address, encryptedKey) {
+  try {
+    const query = `
+      INSERT INTO discord_wallets (user_id, address, encrypted_key, created_at, updated_at)
+      VALUES ($1, $2, $3, NOW(), NOW())
+      RETURNING *;
+    `;
+    const values = [userId, address, encryptedKey];
+    const result = await client.query(query, values);
+    return result.rows[0];
+  } catch (error) {
+    console.error("[ERROR] Failed to create wallet:", error);
+    throw new Error("Database query failed");
+  }
+}
 
-// 创建 Wallet 模型
-const Wallet = mongoose.model("Wallet", walletSchema);
+/**
+ * 更新钱包的加密私钥
+ * @param {string} userId Discord 用户 ID
+ * @param {string} newEncryptedKey 新的加密私钥
+ */
+async function updateWalletKey(userId, newEncryptedKey) {
+  try {
+    const query = `
+      UPDATE discord_wallets
+      SET encrypted_key = $1, updated_at = NOW()
+      WHERE user_id = $2
+      RETURNING *;
+    `;
+    const values = [newEncryptedKey, userId];
+    const result = await client.query(query, values);
+    return result.rows[0];
+  } catch (error) {
+    console.error("[ERROR] Failed to update wallet key:", error);
+    throw new Error("Database query failed");
+  }
+}
 
-module.exports = Wallet;
+module.exports = {
+  checkWallet,
+  createWallet,
+  updateWalletKey,
+};

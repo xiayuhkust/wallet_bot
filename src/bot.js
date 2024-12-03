@@ -26,12 +26,12 @@ const client = new Client({
     await connectToDatabase();
 
     // 测试数据库连接
-    const client = getClient();
-    const testResult = await client.query("SELECT NOW() AS current_time");
+    const dbClient = getClient(); // 获取数据库客户端实例
+    const testResult = await dbClient.query("SELECT NOW() AS current_time");
     console.log(`[INFO] Database connection successful. Current time: ${testResult.rows[0].current_time}`);
 
     console.log("[INFO] Starting bot login...");
-    await discordClient.login(TOKEN);
+    await client.login(TOKEN); // 这里的 client 是 Discord 客户端
     console.log("[INFO] Bot logged in successfully.");
   } catch (error) {
     console.error("[ERROR] Failed to initialize bot or database:", error);

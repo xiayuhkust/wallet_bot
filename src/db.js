@@ -21,7 +21,12 @@ async function connectToDatabase() {
     throw error; // 抛出错误以便外部处理
   }
 }
-
+function getClient() {
+  if (!client) {
+    throw new Error("[ERROR] Database client is not initialized. Call connectToDatabase first.");
+  }
+  return client;
+}
 async function disconnectFromDatabase() {
   if (!client) {
     console.log("No active database connection to close.");
@@ -37,4 +42,4 @@ async function disconnectFromDatabase() {
   }
 }
 
-module.exports = { connectToDatabase, disconnectFromDatabase, getClient: () => client };
+module.exports = { connectToDatabase, disconnectFromDatabase, getClient };

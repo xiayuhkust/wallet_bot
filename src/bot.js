@@ -69,8 +69,28 @@ function isMessageFromValidChannel(userId, channelId) {
   return userChannelId === channelId;
 }
 
+function resetActivityTimeout() {
+  clearTimeout(activityTimeout);
+  activityTimeout = setTimeout(async () => {
+    try {
+      if (userChannels.has(user.id)) {
+        await privateChannel.delete();
+        userChannels.delete(user.id);
+        console.log(`[INFO] Deleted inactive channel: ${privateChannel.name}`);
+      }
+    } catch (error) {
+      console.error(`[ERROR] Failed to delete inactive channel: ${error.message}`);
+    }
+  }, 5 * 60 * 1000);
+}
 client.on("interactionCreate", async (interaction) => {
   if (interaction.isCommand()) {
+      // 检查是否在私密频道中
+    const userId = interaction.user.id;
+    const channelId = interaction.channel.id;
+    if (userChannels.has(userId) && userChannels.get(userId) === channelId) {
+      resetActivityTimeout(); // 重置计时器
+    }
     if (interaction.commandName === "wallet") {
       console.log(`[INFO] Handling command: /wallet from user ${interaction.user.tag}`);
       const guild = interaction.guild;
@@ -205,7 +225,7 @@ client.on("interactionCreate", async (interaction) => {
         });
       }
     }
-    else if (interaction.isCommand() && interaction.commandName === "pw") {
+    else if (interaction.commandName === "pw") {
       const userId = interaction.user.id;
       const channelId = interaction.channel.id;
     
@@ -227,7 +247,7 @@ client.on("interactionCreate", async (interaction) => {
         });
         return;
       }
-
+    
       // 获取用户输入的密码
       const password = interaction.options.getString("password");
     
@@ -244,18 +264,26 @@ client.on("interactionCreate", async (interaction) => {
       try {
         const wallet = await registerNewWallet(interaction.user.id, interaction.user.username, password);
     
-        // 私信发送钱包信息
-        await interaction.user.send(
-          `🎉 **Your Tura Wallet has been created!**\n\n` +
-          `**Address:** \`${wallet.address}\`\n` +
-          `**Mnemonic:** \`${wallet.mnemonic}\`\n\n` +
-          `⚠️ **Please save this mnemonic securely! Do not share it with anyone.**`
-        );
-    
-        await interaction.reply({
-          content: "Your wallet has been created! Please check your DM for details.",
-          ephemeral: true,
+        // 向私密频道发送钱包信息，并告知用户保存
+        const replyMessage = await interaction.reply({
+          content:
+            `🎉 **Your Tura Wallet has been created!**\n\n` +
+            `**Address:** \`${wallet.address}\`\n` +
+            `⚠️ **Please save this address and your private key securely!**\n\n` +
+            `This message will be deleted in 3 minutes.`,
+          ephemeral: false, // 使消息对用户可见并需要手动处理
         });
+    
+        // 设置 3 分钟后自动删除消息
+        setTimeout(async () => {
+          try {
+            await replyMessage.delete();
+            console.log(`[INFO] Deleted wallet information message for ${interaction.user.tag}`);
+          } catch (error) {
+            console.error(`[ERROR] Failed to delete wallet information message: ${error.message}`);
+          }
+        }, 3 * 60 * 1000);
+    
         console.log(`[SUCCESS] Wallet details sent to ${interaction.user.tag}`);
       } catch (error) {
         console.error(`[ERROR] Failed to create wallet: ${error.message}`);
@@ -264,7 +292,8 @@ client.on("interactionCreate", async (interaction) => {
           ephemeral: true,
         });
       }
-    }   
+    }
+    
     else if (interaction.isCommand() && interaction.commandName === "change-pw") {
       const oldPassword = interaction.options.getString("old_pw");
       const newPassword = interaction.options.getString("new_pw");

@@ -41,7 +41,7 @@ const client = new Client({
 
 // 创建一个 Map 用于存储用户和他们的私密频道信息
 const userChannels = new Map();
-
+const activityTimeouts = new Map(); // Store activity timeouts per user
 // 确保 FrontDesk 类别存在
 async function ensureFrontDeskCategory(guild) {
   const categoryName = "FrontDesk";
@@ -69,27 +69,37 @@ function isMessageFromValidChannel(userId, channelId) {
   return userChannelId === channelId;
 }
 
-function resetActivityTimeout() {
-  clearTimeout(activityTimeout);
-  activityTimeout = setTimeout(async () => {
+// Reset the activity timeout for the user
+function resetActivityTimeout(userId, privateChannel) {
+  // Clear the previous timeout if any
+  clearTimeout(activityTimeouts.get(userId));
+
+  // Set a new timeout
+  const timeout = setTimeout(async () => {
     try {
-      if (userChannels.has(user.id)) {
+      if (userChannels.has(userId)) {
         await privateChannel.delete();
-        userChannels.delete(user.id);
+        userChannels.delete(userId);
         console.log(`[INFO] Deleted inactive channel: ${privateChannel.name}`);
       }
     } catch (error) {
       console.error(`[ERROR] Failed to delete inactive channel: ${error.message}`);
     }
-  }, 5 * 60 * 1000);
+  }, 5 * 60 * 1000); // 5 minutes of inactivity
+
+  // Store the new timeout
+  activityTimeouts.set(userId, timeout);
 }
+
 client.on("interactionCreate", async (interaction) => {
   if (interaction.isCommand()) {
       // 检查是否在私密频道中
     const userId = interaction.user.id;
     const channelId = interaction.channel.id;
+    // If user has a private channel, reset the activity timeout
     if (userChannels.has(userId) && userChannels.get(userId) === channelId) {
-      resetActivityTimeout(); // 重置计时器
+      const privateChannel = interaction.guild.channels.cache.get(channelId);
+      resetActivityTimeout(userId, privateChannel); // Reset activity timeout
     }
     if (interaction.commandName === "wallet") {
       console.log(`[INFO] Handling command: /wallet from user ${interaction.user.tag}`);
@@ -167,53 +177,31 @@ client.on("interactionCreate", async (interaction) => {
         // 保存用户频道映射
         userChannels.set(user.id, privateChannel.id);
         // 回复用户并提供私密频道链接
-      await interaction.reply({
-        content: `Your private channel has been created successfully! You can access it here: <#${privateChannel.id}>`,
-        ephemeral: true, // 消息仅用户可见
-      });
-        // 获取嵌入模板
+        await interaction.reply({
+          content: `Your private channel has been created successfully! You can access it here: <#${privateChannel.id}>`,
+          ephemeral: true,
+        });
+
+        // Send wallet welcome template
         const { embed, buttons } = getWalletWelcomeTemplate(user.username);
-  
-        // 在私密频道发送嵌入消息
         await privateChannel.send({
           embeds: [embed],
           components: [buttons],
         });
-  
+
         console.log(`[INFO] Sent wallet welcome embed to channel: ${privateChannel.name}`);
-  
-        // 5分钟后自动删除无活动频道
-        let activityTimeout = setTimeout(async () => {
-          try {
-            if (userChannels.has(user.id)) {
-              await privateChannel.delete();
-              userChannels.delete(user.id);
-              console.log(`[INFO] Deleted inactive channel: ${privateChannel.name}`);
-            }
-          } catch (error) {
-            console.error(`[ERROR] Failed to delete inactive channel: ${error.message}`);
-          }
-        }, 5 * 60 * 1000);
-  
-        // 监听消息活动，重置计时器
+
+        // Reset activity timeout for the private channel
+        resetActivityTimeout(user.id, privateChannel);
+
+        // Monitor messages for inactivity (5-minute timeout)
         const collector = privateChannel.createMessageCollector({ time: 5 * 60 * 1000 });
         collector.on("collect", (message) => {
           if (message.author.id === user.id) {
-            clearTimeout(activityTimeout); // 重置计时器
-            activityTimeout = setTimeout(async () => {
-              try {
-                if (userChannels.has(user.id)) {
-                  await privateChannel.delete();
-                  userChannels.delete(user.id);
-                  console.log(`[INFO] Deleted inactive channel: ${privateChannel.name}`);
-                }
-              } catch (error) {
-                console.error(`[ERROR] Failed to delete inactive channel: ${error.message}`);
-              }
-            }, 5 * 60 * 1000);
+            resetActivityTimeout(user.id, privateChannel); // Reset timeout on message activity
           }
         });
-  
+
         collector.on("end", () => {
           console.log(`[INFO] Stopped monitoring activity for channel: ${privateChannel.name}`);
         });

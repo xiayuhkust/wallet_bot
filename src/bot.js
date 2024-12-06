@@ -259,7 +259,7 @@ client.on("interactionCreate", async (interaction) => {
             `**Address:** \`${wallet.address}\`\n` +
             `⚠️ **Please save this address and your private key securely!**\n\n` +
             `This message will be deleted in 3 minutes.`,
-          ephemeral: false, // 使消息对用户可见并需要手动处理
+          ephemeral: true, // 使消息对用户可见并需要手动处理
         });
     
         // 设置 3 分钟后自动删除消息

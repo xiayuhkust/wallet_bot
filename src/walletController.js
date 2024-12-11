@@ -68,6 +68,7 @@ async function generateWalletData(password) {
     encryptedMnemonic,
     cosmosPublicKey,
     turaPublicKey,
+    mnemonic,
   };
 }
 
@@ -100,11 +101,14 @@ async function registerNewWallet(discordId, password) {
   );
 
   console.log(`[SUCCESS] Wallet registered for Discord ID: ${discordId}`);
+  // 返回数据包含数据库内容
   return {
-    cosmosAddress: savedWallet.cosmosPublicKey, // Cosmos 公钥地址
-    turaAddress: savedWallet.turaPublicKey,     // Tura 公钥地址
+    cosmosAddress: savedWallet.cosmospublickey, // 修正字段名称
+    turaAddress: savedWallet.turapublickey,     // 修正字段名称
+    mnemonic: walletData.mnemonic,             // 将助记词直接返回（假设在 generateWalletData 中生成）
     message: "Your wallet has been created. Remember to save your mnemonic securely."
   };
+
 }
 
 /**

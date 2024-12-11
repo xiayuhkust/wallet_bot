@@ -56,6 +56,10 @@ async function createWallet(userId, passwordHash, encryptedMnemonic, cosmosPubli
     ];
 
     const result = await client.query(query, values);
+
+      // 添加日志打印返回结果
+    console.log('[DEBUG] Wallet creation result:', result.rows[0]);
+
     return result.rows[0];
   } catch (error) {
     console.error("[ERROR] Failed to create wallet:", error);

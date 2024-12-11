@@ -248,19 +248,22 @@ client.on("interactionCreate", async (interaction) => {
         return;
       }
     
-      // 将密码传递到创建钱包逻辑
-      try {
-        const wallet = await registerNewWallet(interaction.user.id, interaction.user.username, password);
-    
-        // 向私密频道发送钱包信息，并告知用户保存
-        const replyMessage = await interaction.reply({
-          content:
-            `🎉 **Your Tura Wallet has been created!**\n\n` +
-            `**Address:** \`${wallet.address}\`\n` +
-            `⚠️ **Please save this address and your private key securely!**\n\n` +
-            `This message will be deleted in 3 minutes.`,
-          ephemeral: true, // 使消息对用户可见并需要手动处理
-        });
+// 创建钱包并向用户反馈
+try {
+  const wallet = await registerNewWallet(interaction.user.id, password);
+
+  // 构建反馈信息
+  const replyMessage = await interaction.reply({
+    content:
+      `🎉 **Your Tura Wallet has been created!**\n\n` +
+      `**Cosmos Address:** \`${wallet.cosmosAddress}\`\n` +
+      `**Tura Address:** \`${wallet.turaAddress}\`\n\n` +
+      `🔑 **Important:** Below is your mnemonic (seed phrase). This is the only way to recover your wallet if you lose access.\n\n` +
+      `**Mnemonic:** \`${wallet.mnemonic}\`\n\n` +
+      `⚠️ **Please save your mnemonic securely. Do NOT share it with anyone.**\n` +
+      `This message will not be saved and will be deleted in 3 minutes for security reasons. Make sure to manually delete this message after saving.`,
+    ephemeral: true, // 确保消息仅对用户可见
+  });
     
         // 设置 3 分钟后自动删除消息
         setTimeout(async () => {

@@ -1,7 +1,7 @@
 const { DirectSecp256k1HdWallet } = require("@cosmjs/proto-signing");
 const bcrypt = require('bcryptjs');  // 用于密码哈希
 const crypto = require('crypto');    // 用于加密私钥和助记词
-
+/*
 // 加密函数：使用密码和随机盐加密数据
 function encryptData(data, password) {
   const salt = crypto.randomBytes(16);  // 生成随机盐
@@ -69,5 +69,5 @@ async function test() {
   // 输出生成的完整数据
   console.log("Final Wallet Data:", walletData);
 }
-
+*/
 test();

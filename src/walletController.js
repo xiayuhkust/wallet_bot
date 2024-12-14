@@ -1,4 +1,4 @@
-const { DirectSecp256k1HdWallet } = require("@cosmjs/proto-signing");
+const { DirectSecp256k1HdWallet, DirectSecp256k1Wallet } = require("@cosmjs/proto-signing");
 const crypto = require('crypto');    // 用于加密私钥和助记词
 const { createWallet, checkWallet, updatePassword } = require("../models/wallet");
 require('dotenv').config(); // 加载环境变量
@@ -165,14 +165,14 @@ async function restoreWallet_PrivateKey(discordId, privateKey) {
   }
 
   // 使用私钥生成 Cosmos 钱包
-  const wallet = await DirectSecp256k1HdWallet.fromKey(Buffer.from(privateKey, 'hex'), "cosmos");
+  const wallet = await DirectSecp256k1Wallet.fromKey(Buffer.from(privateKey, 'hex'), "cosmos");
 
   // 获取 Cosmos 公钥
   const [cosmosAccount] = await wallet.getAccounts();
   const cosmosPublicKey = cosmosAccount.address;
 
   // 生成 Tura 钱包同私钥但不同前缀
-  const turaWallet = await DirectSecp256k1HdWallet.fromKey(Buffer.from(privateKey, 'hex'), "tura");
+  const turaWallet = await DirectSecp256k1Wallet.fromKey(Buffer.from(privateKey, 'hex'), "tura");
   const [turaAccount] = await turaWallet.getAccounts();
   const turaPublicKey = turaAccount.address;
 

@@ -329,15 +329,14 @@ client.on("interactionCreate", async (interaction) => {
         });
       }
     }
+    else if (interaction.customId === "restore_wallet") {
+      console.log(`[INFO] User ${interaction.user.tag} clicked Restore Wallet`);
+      await interaction.reply({
+        content: 'To restore your wallet, please use the command `/restore_wallet`.',
+        ephemeral: true,
+      });
+    }
   }
-  else if (interaction.customId === "restore_wallet") {
-    console.log(`[INFO] User ${interaction.user.tag} clicked Restore Wallet`);
-    await interaction.reply({
-    content: 'To restore your wallet, please use the command `/restore_wallet`.',
-    ephemeral: true,
-    });
-  }
-
 });
 
 /*

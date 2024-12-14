@@ -8,35 +8,17 @@ const commands = [
     description: "Access your Tura wallet functions",
   },
   {
-    name: "pw",
-    description: "Set your wallet password.",
+    name: "restore_wallet",
+    description: "Restore your wallet using a private key",
     options: [
       {
-        name: "password",
-        type: 3, // STRING
-        description: "Your wallet password.",
+        type: 3, // STRING type
+        name: "privatekey",
+        description: "Your wallet's private key",
         required: true,
       },
     ],
-  },
-  {
-    name: "change-pw",
-    description: "Change your wallet password.",
-    options: [
-      {
-        name: "old_pw",
-        type: 3, // STRING
-        description: "Your current wallet password.",
-        required: true,
-      },
-      {
-        name: "new_pw",
-        type: 3, // STRING
-        description: "Your new wallet password.",
-        required: true,
-      },
-    ],
-  },
+  }
 ];
 
 // 创建 REST 客户端

@@ -213,58 +213,53 @@ client.on("interactionCreate", async (interaction) => {
         });
       }
     }
-    else if (interaction.commandName === "pw") {
-      const userId = interaction.user.id;
-      const channelId = interaction.channel.id;
-    
-      // 检查是否在用户的私密频道中
-      if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
-        await interaction.reply({
-          content: "This command can only be used in your private channel.",
-          ephemeral: true,
-        });
-        return;
-      }
-    
+
+  } 
+  // 处理按钮交互
+  else if (interaction.isButton()) {
+    // 获取当前用户和频道信息
+    const userId = interaction.user.id;
+    const channelId = interaction.channel.id;
+  
+    // 验证按钮交互是否在用户的私密频道中
+    if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
+      await interaction.reply({
+        content: "You are not authorized to interact in this channel.",
+        ephemeral: true, // 仅对当前用户显示
+      });
+      return; // 停止进一步处理
+    }
+  
+    if (interaction.customId === "create_wallet") {
+      console.log(`[INFO] User ${interaction.user.tag} clicked Create Wallet`);
+  
       // 检查用户是否已有钱包
       const existingWallet = await checkWallet(userId);
       if (existingWallet) {
         await interaction.reply({
-          content: "You already have a wallet. Use `/change-pw` to update your password.",
+          content: "You already have a wallet. You can change your wallet by clicking Redirect.",
           ephemeral: true,
         });
         return;
       }
-    
-      // 获取用户输入的密码
-      const password = interaction.options.getString("password");
-    
-      // 验证密码强度
-      if (password.length < 6) {
-        await interaction.reply({
-          content: "Your password must be at least 6 characters long. Please try again.",
-          ephemeral: true,
+  
+      // 创建钱包并向用户反馈
+      try {
+        const wallet = await registerNewWallet(interaction.user.id);
+  
+        // 构建反馈信息
+        const replyMessage = await interaction.reply({
+          content:
+            `🎉 **Your Tura Wallet has been created!**\n\n` +
+            `**Cosmos Address:** \`${wallet.cosmosAddress}\`\n` +
+            `**Tura Address:** \`${wallet.turaAddress}\`\n\n` +
+            `🔑 **Important:** Below is your mnemonic (seed phrase). This is the only way to recover your wallet if you lose access.\n\n` +
+            `**Mnemonic:** \`${wallet.mnemonic}\`\n\n` +
+            `⚠️ **Please save your mnemonic securely. Do NOT share it with anyone.**\n` +
+            `This message will not be saved and will be deleted in 3 minutes for security reasons. Make sure to manually delete this message after saving.`,
+          ephemeral: true, // 确保消息仅对用户可见
         });
-        return;
-      }
-    
-// 创建钱包并向用户反馈
-try {
-  const wallet = await registerNewWallet(interaction.user.id, password);
-
-  // 构建反馈信息
-  const replyMessage = await interaction.reply({
-    content:
-      `🎉 **Your Tura Wallet has been created!**\n\n` +
-      `**Cosmos Address:** \`${wallet.cosmosAddress}\`\n` +
-      `**Tura Address:** \`${wallet.turaAddress}\`\n\n` +
-      `🔑 **Important:** Below is your mnemonic (seed phrase). This is the only way to recover your wallet if you lose access.\n\n` +
-      `**Mnemonic:** \`${wallet.mnemonic}\`\n\n` +
-      `⚠️ **Please save your mnemonic securely. Do NOT share it with anyone.**\n` +
-      `This message will not be saved and will be deleted in 3 minutes for security reasons. Make sure to manually delete this message after saving.`,
-    ephemeral: true, // 确保消息仅对用户可见
-  });
-    
+  
         // 设置 3 分钟后自动删除消息
         setTimeout(async () => {
           try {
@@ -274,7 +269,7 @@ try {
             console.error(`[ERROR] Failed to delete wallet information message: ${error.message}`);
           }
         }, 3 * 60 * 1000);
-    
+  
         console.log(`[SUCCESS] Wallet details sent to ${interaction.user.tag}`);
       } catch (error) {
         console.error(`[ERROR] Failed to create wallet: ${error.message}`);
@@ -284,108 +279,15 @@ try {
         });
       }
     }
-    
-    else if (interaction.isCommand() && interaction.commandName === "change-pw") {
-      const oldPassword = interaction.options.getString("old_pw");
-      const newPassword = interaction.options.getString("new_pw");
-    
-      // 验证密码并更新钱包逻辑
-      // ...
-    }
-  } else if (interaction.isButton()){
-      // 获取当前用户和频道信息
-      const userId = interaction.user.id;
-      const channelId = interaction.channel.id;
-
-      // 验证按钮交互是否在用户的私密频道中
-      if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
-        await interaction.reply({
-          content: "You are not authorized to interact in this channel.",
-          ephemeral: true, // 仅对当前用户显示
-        });
-        return; // 停止进一步处理
-      }
-
-      if (interaction.customId === "create_wallet") {
-        console.log(`[INFO] User ${interaction.user.tag} clicked Create Wallet`);
-      
-        await interaction.reply({
-          content:
-            "To create your wallet, please use the `/pw` command followed by your desired password. Your password will be used to secure your wallet. Example:\n\n`/pw mySecurePassword123`",
-          ephemeral: true,
-        });
-      }
-
-      else if (interaction.commandName === "change-pw") {
-        const userId = interaction.user.id;
-        const channelId = interaction.channel.id;
-      
-        // 验证命令是否在用户的私密频道中
-        if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
-          await interaction.reply({
-            content: "This command can only be used in your private channel.",
-            ephemeral: true,
-          });
-          return;
-        }
-      
-        // 获取用户输入的旧密码和新密码
-        const oldPassword = interaction.options.getString("old_pw");
-        const newPassword = interaction.options.getString("new_pw");
-      
-        // 验证新密码强度
-        if (newPassword.length < 6) {
-          await interaction.reply({
-            content: "Your new password must be at least 6 characters long. Please try again.",
-            ephemeral: true,
-          });
-          return;
-        }
-      
-        try {
-          // 获取用户的钱包信息
-          const wallet = await checkWallet(userId);
-          if (!wallet) {
-            await interaction.reply({
-              content: "No wallet found for your account. Please create one first.",
-              ephemeral: true,
-            });
-            return;
-          }
-      
-          // 解密助记词以验证旧密码
-          let mnemonic;
-          try {
-            mnemonic = decryptData(wallet.encrypted_key, oldPassword);
-          } catch (error) {
-            await interaction.reply({
-              content: "Your current password is incorrect. Please try again.",
-              ephemeral: true,
-            });
-            return;
-          }
-      
-          // 用新密码重新加密助记词
-          const newEncryptedKey = encryptData(mnemonic, newPassword);
-      
-          // 更新数据库中的加密助记词
-          await updateWalletKey(userId, newEncryptedKey);
-      
-          await interaction.reply({
-            content: "Your wallet password has been updated successfully!",
-            ephemeral: true,
-          });
-          console.log(`[INFO] User ${interaction.user.tag} updated their wallet password.`);
-        } catch (error) {
-          console.error(`[ERROR] Failed to update password for user ${interaction.user.tag}:`, error);
-          await interaction.reply({
-            content: "An error occurred while updating your password. Please try again later.",
-            ephemeral: true,
-          });
-        }
-      }      
-
   }
+  else if (interaction.customId === "restore_wallet") {
+    console.log(`[INFO] User ${interaction.user.tag} clicked Restore Wallet`);
+    await interaction.reply({
+    content: 'To restore your wallet, please use the command `/restore_wallet`.',
+    ephemeral: true,
+    });
+  }
+
 });
 
 /*

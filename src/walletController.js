@@ -1,19 +1,17 @@
-// walletcontroller.js
 const { DirectSecp256k1HdWallet } = require("@cosmjs/proto-signing");
-const bcrypt = require('bcryptjs');  // 用于密码哈希
 const crypto = require('crypto');    // 用于加密私钥和助记词
 const { createWallet, checkWallet, updatePassword } = require("../models/wallet");
 require('dotenv').config(); // 加载环境变量
 
 /**
- * 加密函数：使用密码和随机盐加密数据
+ * 加密函数：使用用户的 Discord ID 和随机盐加密数据
  * @param {string} data 明文数据
- * @param {string} password 用户密码
+ * @param {string} userId 用户的 Discord ID
  * @returns {Object} 加密后的数据及相关参数
  */
-function encryptData(data, password) {
+function encryptData(data, userId) {
   const salt = crypto.randomBytes(16);  // 生成随机盐
-  const key = crypto.scryptSync(password, salt, 32);  // 使用 scrypt 算法生成加密密钥
+  const key = crypto.scryptSync(userId, salt, 32);  // 使用 scrypt 算法生成加密密钥
   const iv = crypto.randomBytes(16);  // 初始化向量
   
   const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
@@ -24,14 +22,14 @@ function encryptData(data, password) {
 }
 
 /**
- * 解密函数：使用密码解密数据
+ * 解密函数：使用用户的 Discord ID 解密数据
  * @param {Object} encryptedDataObj 加密后的数据对象
- * @param {string} password 用户密码
+ * @param {string} userId 用户的 Discord ID
  * @returns {string} 解密后的明文数据
  */
-function decryptData(encryptedDataObj, password) {
+function decryptData(encryptedDataObj, userId) {
   const { encryptedData, salt, iv } = encryptedDataObj;
-  const key = crypto.scryptSync(password, Buffer.from(salt, 'hex'), 32);
+  const key = crypto.scryptSync(userId, Buffer.from(salt, 'hex'), 32);
   const decipher = crypto.createDecipheriv('aes-256-cbc', key, Buffer.from(iv, 'hex'));
   let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
@@ -40,10 +38,10 @@ function decryptData(encryptedDataObj, password) {
 
 /**
  * 生成钱包并加密助记词
- * @param {string} password 用户密码（明文）
+ * @param {string} userId 用户的 Discord ID
  * @returns {Promise<Object>} 包含加密后的助记词和公钥
  */
-async function generateWalletData(password) {
+async function generateWalletData(userId) {
   // 生成新的 Cosmos 钱包
   const cosmosWallet = await DirectSecp256k1HdWallet.generate(24, { prefix: "cosmos" });
   
@@ -58,13 +56,9 @@ async function generateWalletData(password) {
   const turaPublicKey = turaAccount.address;
 
   // 加密助记词
-  const encryptedMnemonic = encryptData(mnemonic, password);
-  
-  // 哈希密码
-  const passwordHash = bcrypt.hashSync(password, 10);
+  const encryptedMnemonic = encryptData(mnemonic, userId);
   
   return {
-    passwordHash,
     encryptedMnemonic,
     cosmosPublicKey,
     turaPublicKey,
@@ -75,10 +69,9 @@ async function generateWalletData(password) {
 /**
  * 注册新钱包
  * @param {string} discordId Discord 用户 ID
- * @param {string} password 用户设置的密码
  * @returns {Promise<Object>} 包含钱包地址和提示信息
  */
-async function registerNewWallet(discordId, password) {
+async function registerNewWallet(discordId) {
   console.log(`[INFO] Generating new wallet for Discord ID: ${discordId}...`);
 
   // 检查用户是否已有钱包
@@ -89,12 +82,11 @@ async function registerNewWallet(discordId, password) {
   }
 
   // 生成钱包数据
-  const walletData = await generateWalletData(password);
+  const walletData = await generateWalletData(discordId);
 
   // 将新钱包保存到数据库
   const savedWallet = await createWallet(
     discordId, 
-    walletData.passwordHash, 
     walletData.encryptedMnemonic, 
     walletData.cosmosPublicKey, 
     walletData.turaPublicKey
@@ -109,6 +101,17 @@ async function registerNewWallet(discordId, password) {
     message: "Your wallet has been created. Remember to save your mnemonic securely."
   };
 
+}
+
+/**
+ * 解密助记词并生成 signer
+ * @param {Object} encryptedMnemonic 加密后的助记词对象
+ * @param {string} userId 用户的 Discord ID
+ * @returns {Promise<Object>} signer 对象
+ */
+async function getSignerFromEncryptedMnemonic(encryptedMnemonic, userId) {
+  const mnemonic = decryptData(encryptedMnemonic, userId);
+  return DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix: "tura" });
 }
 
 /**
@@ -134,4 +137,4 @@ async function changeUserPassword(discordId, oldPassword, newPassword) {
   };
 }
 
-module.exports = { registerNewWallet, changeUserPassword };
+module.exports = { registerNewWallet, changeUserPassword, getSignerFromEncryptedMnemonic };

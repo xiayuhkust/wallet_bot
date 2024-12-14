@@ -87,7 +87,9 @@ async function registerNewWallet(discordId) {
   // 将新钱包保存到数据库
   const savedWallet = await createWallet(
     discordId, 
-    walletData.encryptedMnemonic, 
+    walletData.encryptedMnemonic.encryptedData, 
+    walletData.encryptedMnemonic.salt, 
+    walletData.encryptedMnemonic.iv, 
     walletData.cosmosPublicKey, 
     walletData.turaPublicKey
   );
@@ -102,6 +104,7 @@ async function registerNewWallet(discordId) {
   };
 
 }
+
 /**
  * 恢复钱包
  * @param {string} discordId Discord 用户 ID
@@ -233,7 +236,6 @@ async function changeUserPassword(discordId, oldPassword, newPassword) {
 
 module.exports = { 
   registerNewWallet, 
-  changeUserPassword, 
   getSignerFromEncryptedMnemonic, 
   restoreWallet_Mnemonic, 
   restoreWallet_PrivateKey 

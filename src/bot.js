@@ -214,8 +214,19 @@ client.on("interactionCreate", async (interaction) => {
       }
     }
     else if (interaction.commandName === "restore_wallet") {
+        // 获取当前用户和频道信息
+        const userId = interaction.user.id;
+        const channelId = interaction.channel.id;
+      // 验证按钮交互是否在用户的私密频道中
+      if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
+        await interaction.reply({
+          content: "You are not authorized to interact in this channel.",
+          ephemeral: true, // 仅对当前用户显示
+        });
+        return; // 停止进一步处理
+      }
       console.log(`[INFO] Handling command: /restore_wallet from user ${interaction.user.tag}`);
-      const userId = interaction.user.id;
+
       const privateKey = interaction.options.getString("privatekey");
       const mnemonic = interaction.options.getString("mnemonic");
 

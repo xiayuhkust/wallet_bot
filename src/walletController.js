@@ -87,9 +87,6 @@ async function registerNewWallet(discordId) {
   // 将新钱包保存到数据库
   const savedWallet = await createWallet(
     discordId, 
-    walletData.encryptedMnemonic.encryptedData, 
-    walletData.encryptedMnemonic.salt, 
-    walletData.encryptedMnemonic.iv, 
     walletData.cosmosPublicKey, 
     walletData.turaPublicKey
   );
@@ -139,7 +136,6 @@ async function restoreWallet_Mnemonic(discordId, mnemonic) {
   // 将恢复的钱包保存到数据库
   const savedWallet = await createWallet(
     discordId,
-    encryptedMnemonic,
     cosmosPublicKey,
     turaPublicKey
   );
@@ -186,7 +182,6 @@ async function restoreWallet_PrivateKey(discordId, privateKey) {
   // 将恢复的钱包保存到数据库
   const savedWallet = await createWallet(
     discordId,
-    encryptedPrivateKey,
     cosmosPublicKey,
     turaPublicKey
   );
@@ -211,28 +206,7 @@ async function getSignerFromEncryptedMnemonic(encryptedMnemonic, userId) {
   return DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix: "tura" });
 }
 
-/**
- * 更新用户密码
- * @param {string} discordId Discord 用户 ID
- * @param {string} oldPassword 用户当前密码（明文）
- * @param {string} newPassword 用户新密码（明文）
- * @returns {Promise<Object>} 返回更新后的钱包记录
- */
-async function changeUserPassword(discordId, oldPassword, newPassword) {
-  console.log(`[INFO] Updating password for Discord ID: ${discordId}...`);
 
-  // 更新密码
-  const updatedWallet = await updatePassword(
-    discordId,
-    oldPassword,
-    newPassword
-  );
-
-  console.log(`[SUCCESS] Password updated for Discord ID: ${discordId}`);
-  return {
-    message: "Your password has been successfully updated."
-  };
-}
 
 module.exports = { 
   registerNewWallet, 

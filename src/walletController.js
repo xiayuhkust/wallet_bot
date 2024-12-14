@@ -102,6 +102,100 @@ async function registerNewWallet(discordId) {
   };
 
 }
+/**
+ * 恢复钱包
+ * @param {string} discordId Discord 用户 ID
+ * @param {string} recoveryData 私钥或助记词
+ * @param {boolean} isMnemonic 是否为助记词
+ * @returns {Promise<Object>} 包含钱包地址和提示信息
+ */
+async function restoreWallet_Mnemonic(discordId, mnemonic) {
+  console.log(`[INFO] Restoring wallet for Discord ID: ${discordId} using mnemonic...`);
+
+  // 检查用户是否已有钱包
+  const existingWallet = await checkWallet(discordId);
+  if (existingWallet) {
+    console.log(`[INFO] Wallet already exists for Discord ID: ${discordId}, it will be overwritten.`);
+  }
+
+  // 使用助记词生成 Cosmos 钱包
+  const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix: "cosmos" });
+
+  // 获取 Cosmos 公钥
+  const [cosmosAccount] = await wallet.getAccounts();
+  const cosmosPublicKey = cosmosAccount.address;
+
+  // 生成 Tura 钱包同助记词但不同前缀
+  const turaWallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix: "tura" });
+  const [turaAccount] = await turaWallet.getAccounts();
+  const turaPublicKey = turaAccount.address;
+
+  // 加密助记词
+  const encryptedMnemonic = encryptData(mnemonic, discordId);
+
+  // 将恢复的钱包保存到数据库
+  const savedWallet = await createWallet(
+    discordId,
+    encryptedMnemonic,
+    cosmosPublicKey,
+    turaPublicKey
+  );
+
+  console.log(`[SUCCESS] Wallet restored for Discord ID: ${discordId}`);
+  return {
+    cosmosAddress: savedWallet.cosmospublickey,
+    turaAddress: savedWallet.turapublickey,
+    mnemonic: mnemonic,
+    message: "Your wallet has been restored. Remember to save your mnemonic securely."
+  };
+}
+
+/**
+ * 使用私钥恢复钱包
+ * @param {string} discordId Discord 用户 ID
+ * @param {string} privateKey 私钥
+ * @returns {Promise<Object>} 包含钱包地址和提示信息
+ */
+async function restoreWallet_PrivateKey(discordId, privateKey) {
+  console.log(`[INFO] Restoring wallet for Discord ID: ${discordId} using private key...`);
+
+  // 检查用户是否已有钱包
+  const existingWallet = await checkWallet(discordId);
+  if (existingWallet) {
+    console.log(`[INFO] Wallet already exists for Discord ID: ${discordId}, it will be overwritten.`);
+  }
+
+  // 使用私钥生成 Cosmos 钱包
+  const wallet = await DirectSecp256k1HdWallet.fromKey(Buffer.from(privateKey, 'hex'), "cosmos");
+
+  // 获取 Cosmos 公钥
+  const [cosmosAccount] = await wallet.getAccounts();
+  const cosmosPublicKey = cosmosAccount.address;
+
+  // 生成 Tura 钱包同私钥但不同前缀
+  const turaWallet = await DirectSecp256k1HdWallet.fromKey(Buffer.from(privateKey, 'hex'), "tura");
+  const [turaAccount] = await turaWallet.getAccounts();
+  const turaPublicKey = turaAccount.address;
+
+  // 加密私钥
+  const encryptedPrivateKey = encryptData(privateKey, discordId);
+
+  // 将恢复的钱包保存到数据库
+  const savedWallet = await createWallet(
+    discordId,
+    encryptedPrivateKey,
+    cosmosPublicKey,
+    turaPublicKey
+  );
+
+  console.log(`[SUCCESS] Wallet restored for Discord ID: ${discordId}`);
+  return {
+    cosmosAddress: savedWallet.cosmospublickey,
+    turaAddress: savedWallet.turapublickey,
+    privateKey: privateKey,
+    message: "Your wallet has been restored. Remember to save your private key securely."
+  };
+}
 
 /**
  * 解密助记词并生成 signer
@@ -137,4 +231,10 @@ async function changeUserPassword(discordId, oldPassword, newPassword) {
   };
 }
 
-module.exports = { registerNewWallet, changeUserPassword, getSignerFromEncryptedMnemonic };
+module.exports = { 
+  registerNewWallet, 
+  changeUserPassword, 
+  getSignerFromEncryptedMnemonic, 
+  restoreWallet_Mnemonic, 
+  restoreWallet_PrivateKey 
+};

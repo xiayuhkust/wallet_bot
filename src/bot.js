@@ -3,7 +3,7 @@ const { Client, GatewayIntentBits, PermissionsBitField, ChannelType } = require(
 const { connectToDatabase, getClient } = require("./db");
 const { handlePrivateChannelMessage } = require("./private_channel_service"); // 引入服务逻辑
 const { getWalletWelcomeTemplate } = require("./embedding_templates");
-const { registerNewWallet } = require("./walletController"); // 假设 wallet.js 处理钱包逻辑
+const { registerNewWallet,  restoreWallet_Mnemonic,  restoreWallet_PrivateKey } = require("./walletController"); // 假设 wallet.js 处理钱包逻辑
 const { checkWallet } = require("../models/wallet");
 
 // 从 .env 文件加载配置
@@ -213,7 +213,46 @@ client.on("interactionCreate", async (interaction) => {
         });
       }
     }
+    else if (interaction.commandName === "restore_wallet") {
+      console.log(`[INFO] Handling command: /restore_wallet from user ${interaction.user.tag}`);
+      const userId = interaction.user.id;
+      const privateKey = interaction.options.getString("privatekey");
+      const mnemonic = interaction.options.getString("mnemonic");
 
+      if (!privateKey && !mnemonic) {
+      await interaction.reply({
+        content: "You must provide either a private key or a mnemonic to restore your wallet.",
+        ephemeral: true,
+      });
+      return;
+      }
+
+      try {
+      let wallet;
+      if (privateKey) {
+        wallet = await restoreWallet_PrivateKey(userId, privateKey);
+      } else if (mnemonic) {
+        wallet = await restoreWallet_Mnemonic(userId, mnemonic);
+      }
+
+      await interaction.reply({
+        content:
+        `🎉 **Your Tura Wallet has been restored!**\n\n` +
+        `**Cosmos Address:** \`${wallet.cosmosAddress}\`\n` +
+        `**Tura Address:** \`${wallet.turaAddress}\`\n\n` +
+        `🔑 **Important:** Please make sure to keep your wallet information secure.`,
+        ephemeral: true,
+      });
+
+      console.log(`[SUCCESS] Wallet restored for ${interaction.user.tag}`);
+      } catch (error) {
+      console.error(`[ERROR] Failed to restore wallet: ${error.message}`);
+      await interaction.reply({
+        content: "An error occurred while restoring your wallet. Please try again later.",
+        ephemeral: true,
+      });
+      }
+    }
   } 
   // 处理按钮交互
   else if (interaction.isButton()) {

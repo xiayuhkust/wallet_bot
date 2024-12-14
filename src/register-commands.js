@@ -9,13 +9,19 @@ const commands = [
   },
   {
     name: "restore_wallet",
-    description: "Restore your wallet using a private key",
+    description: "Restore your wallet using a private key or mnemonic",
     options: [
       {
         type: 3, // STRING type
         name: "privatekey",
         description: "Your wallet's private key",
-        required: true,
+        required: false,
+      },
+      {
+        type: 3, // STRING type
+        name: "mnemonic",
+        description: "Your wallet's mnemonic",
+        required: false,
       },
     ],
   }

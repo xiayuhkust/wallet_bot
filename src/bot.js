@@ -4,8 +4,8 @@ const { connectToDatabase, getClient } = require("./db");
 const { handlePrivateChannelMessage } = require("./private_channel_service"); // 引入服务逻辑
 const { getWalletWelcomeTemplate,getWalletMainTemplate } = require("./embedding_templates");
 const { registerNewWallet,  restoreWallet_Mnemonic,  restoreWallet_PrivateKey, getBalances } = require("./walletController"); // 假设 wallet.js 处理钱包逻辑
-const { checkWallet } = require("../models/wallet");
-
+const { checkWallet,recordFaucetClaim ,checkFaucetClaim} = require("../models/wallet");
+const { getFaucet,sendFaucet } = require("./Faucet");
 // 从 .env 文件加载配置
 const TOKEN = process.env.TagfusionBotToken;
 
@@ -385,6 +385,48 @@ client.on("interactionCreate", async (interaction) => {
         content: 'To restore your wallet, please use the command `/restore_wallet`.',
         ephemeral: true,
       });
+    }
+    else if (interaction.customId === "Daily_Rewards") {
+      console.log(`[INFO] User ${interaction.user.tag} clicked Daily Rewards`);
+
+      try {
+        const userId = interaction.user.id;
+
+        // Check if the user has already claimed the faucet within the last 24 hours
+        const hasClaimed = await checkFaucetClaim(userId);
+        if (hasClaimed) {
+          await interaction.reply({
+        content: "You have already claimed your daily rewards. Please try again after 24 hours.",
+        ephemeral: true,
+          });
+          return;
+        }
+
+        // Get the faucet rewards
+        const faucetResult = await getFaucet(userId);
+        if (faucetResult.success) {
+          // Record the faucet claim
+          await recordFaucetClaim(userId);
+
+          await interaction.reply({
+        content: `🎉 **Congratulations!** You have received your daily rewards:\n\n` +
+             `**Amount:** ${faucetResult.amount} ${faucetResult.denom}\n\n` +
+             `Come back tomorrow for more rewards!`,
+        ephemeral: true,
+          });
+        } else {
+          await interaction.reply({
+        content: "Failed to claim daily rewards. Please try again later.",
+        ephemeral: true,
+          });
+        }
+      } catch (error) {
+        console.error(`[ERROR] Failed to process daily rewards: ${error.message}`);
+        await interaction.reply({
+          content: "An error occurred while processing your daily rewards. Please try again later.",
+          ephemeral: true,
+        });
+      }
     }
   }
 });

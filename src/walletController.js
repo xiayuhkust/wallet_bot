@@ -211,7 +211,7 @@ async function restoreWallet_PrivateKey(discordId, privateKey) {
  * @param {string} discordId Discord 用户 ID
  * @returns {Promise<OfflineDirectSigner>} OfflineSigner 对象
  */
-async function getSignerFromEncryptedMnemonic(discordId) {
+async function getSignerFromUser(discordId) {
   // 检查用户是否已有钱包
   const existingWallet = await checkWallet(discordId);
   if (!existingWallet) {
@@ -245,7 +245,7 @@ async function getBalances(turaPublicKey) {
 
 module.exports = { 
   registerNewWallet, 
-  getSignerFromEncryptedMnemonic, 
+  getSignerFromUser, 
   restoreWallet_Mnemonic, 
   restoreWallet_PrivateKey ,
   getBalances

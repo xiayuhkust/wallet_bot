@@ -81,6 +81,73 @@ async function checkWallet(userId) {
   }
 }
 
+/**
+ * 记录用户领取 faucet 的时间
+ * @param {string} userId Discord 用户 ID
+ * @returns {Promise<Object>} 返回新创建的 faucet 记录
+ */
+async function recordFaucetClaim(userId) {
+  try {
+    const client = getClient();
+    if (!client) {
+      throw new Error("Database connection is not initialized.");
+    }
 
+    const query = `
+      INSERT INTO discord_faucet (
+      id, 
+      user_id, 
+      claimed_at
+      )
+      VALUES (
+      gen_random_uuid(), $1, NOW()
+      )
+      RETURNING *;
+    `;
 
-module.exports = { createWallet, checkWallet };
+    const result = await client.query(query, [userId]);
+
+    // 添加日志打印返回结果
+    console.log('[DEBUG] Faucet claim result:', result.rows[0]);
+
+    return result.rows[0];
+  } catch (error) {
+    console.error("[ERROR] Failed to record faucet claim:", error);
+    throw new Error("Database query failed");
+  }
+}
+
+/**
+ * 检查用户是否在过去 24 小时内领取过 faucet
+ * @param {string} userId Discord 用户 ID
+ * @returns {Promise<boolean>} 返回是否领取过 faucet
+ */
+async function checkFaucetClaim(userId) {
+  try {
+    const client = getClient();
+    if (!client) {
+      throw new Error("Database connection is not initialized.");
+    }
+
+    const query = `
+      SELECT * FROM discord_faucet 
+      WHERE user_id = $1 
+      AND claimed_at >= NOW() - INTERVAL '24 HOURS'
+      ORDER BY claimed_at DESC 
+      LIMIT 1
+    `;
+    const result = await client.query(query, [userId]);
+    const hasClaimed = result.rows.length > 0;
+
+    // 添加日志打印返回结果
+    console.log('[DEBUG] Faucet claim check result:', hasClaimed);
+
+    return hasClaimed;
+  } catch (error) {
+    console.error("[ERROR] Failed to check faucet claim:", error);
+    throw new Error("Database query failed");
+  }
+}
+
+module.exports = { createWallet, checkWallet, recordFaucetClaim, checkFaucetClaim };
+

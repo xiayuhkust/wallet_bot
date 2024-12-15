@@ -62,9 +62,15 @@ async function checkWallet(userId) {
       throw new Error("Database connection is not initialized.");
     }
 
-    const query = "SELECT * FROM discord_wallets WHERE user_id = $1";
+    const query = `
+      SELECT * FROM discord_wallets 
+      WHERE user_id = $1 
+      ORDER BY updated_at DESC 
+      LIMIT 1
+    `;
     const result = await client.query(query, [userId]);
     return result.rows[0] || null;
+    console.log('[DEBUG] Wallet check result:', result.rows[0]);
   } catch (error) {
     console.error("[ERROR] Failed to check wallet:", error);
     throw new Error("Database query failed");

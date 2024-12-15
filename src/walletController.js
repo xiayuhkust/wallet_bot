@@ -40,7 +40,7 @@ function decryptData(encryptedDataObj, userId) {
 }
 
 /**
- * 生成钱包并加密助记词
+ * 生成钱包并加密助记词，默认使用助记词
  * @param {string} userId 用户的 Discord ID
  * @returns {Promise<Object>} 包含加密后的助记词和公钥
  */
@@ -66,11 +66,12 @@ async function generateWalletData(userId) {
     cosmosPublicKey,
     turaPublicKey,
     mnemonic,
+
   };
 }
 
 /**
- * 注册新钱包
+ * 注册新钱包,默认用助记词
  * @param {string} discordId Discord 用户 ID
  * @returns {Promise<Object>} 包含钱包地址和提示信息
  */
@@ -91,7 +92,9 @@ async function registerNewWallet(discordId) {
   const savedWallet = await createWallet(
     discordId, 
     walletData.cosmosPublicKey, 
-    walletData.turaPublicKey
+    walletData.turaPublicKey,
+    walletData.encryptedMnemonic,
+    "mnemonic"
   );
 
   console.log(`[SUCCESS] Wallet registered for Discord ID: ${discordId}`);
@@ -140,7 +143,9 @@ async function restoreWallet_Mnemonic(discordId, mnemonic) {
   const savedWallet = await createWallet(
     discordId,
     cosmosPublicKey,
-    turaPublicKey
+    turaPublicKey,
+    encryptedMnemonic,
+    "mnemonic"
   );
 
   console.log(`[SUCCESS] Wallet restored for Discord ID: ${discordId}`);
@@ -186,7 +191,9 @@ async function restoreWallet_PrivateKey(discordId, privateKey) {
   const savedWallet = await createWallet(
     discordId,
     cosmosPublicKey,
-    turaPublicKey
+    turaPublicKey,
+    encryptedPrivateKey,
+    "privateKey"
   );
 
   console.log(`[SUCCESS] Wallet restored for Discord ID: ${discordId}`);
@@ -198,35 +205,44 @@ async function restoreWallet_PrivateKey(discordId, privateKey) {
   };
 }
 
+
 /**
- * 解密助记词并生成 signer
- * @param {Object} encryptedMnemonic 加密后的助记词对象
- * @param {string} userId 用户的 Discord ID
- * @returns {Promise<Object>} signer 对象
+ * 根据加密的助记词或私钥获取 OfflineSigner
+ * @param {string} discordId Discord 用户 ID
+ * @returns {Promise<OfflineDirectSigner>} OfflineSigner 对象
  */
-async function getSignerFromEncryptedMnemonic(encryptedMnemonic, userId) {
-  const mnemonic = decryptData(encryptedMnemonic, userId);
-  return DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix: "tura" });
+async function getSignerFromEncryptedMnemonic(discordId) {
+  // 检查用户是否已有钱包
+  const existingWallet = await checkWallet(discordId);
+  if (!existingWallet) {
+    throw new Error("No wallet found for this user.");
+  }
+
+  const { keyType, encryptedMnemonic, encryptedPrivateKey } = existingWallet;
+
+  if (keyType === "mnemonic") {
+    const decryptedMnemonic = decryptData(encryptedMnemonic, discordId);
+    return DirectSecp256k1HdWallet.fromMnemonic(decryptedMnemonic, { prefix: "tura" });
+  } else if (keyType === "privateKey") {
+    const decryptedPrivateKey = decryptData(encryptedPrivateKey, discordId);
+    return DirectSecp256k1Wallet.fromKey(Buffer.from(decryptedPrivateKey, 'hex'), "tura");
+  } else {
+    throw new Error("Invalid key type.");
+  }
 }
 
 /**
- * 查询 Tura 和 Tags 余额
- * @param {string} turaAddress Tura 钱包地址
- * @returns {Promise<Object>} 包含 Tura 和 Tags 余额的对象
+ * 获取钱包余额
+ * @param {string} turaPublicKey Tura 公钥
+ * @returns {Promise<Object>} 包含钱包余额信息
  */
-async function getBalances(turaAddress) {
-  const rpcEndpoint = process.env.RPC_URL; // 从环境变量中获取 RPC 端点
-  const client = await StargateClient.connect(rpcEndpoint);
-
-  const balances = await client.getAllBalances(turaAddress);
-  const turaBalance = balances.find(balance => balance.denom === 'tura') || { amount: '0', denom: 'tura' };
-  const tagsBalance = balances.find(balance => balance.denom === 'tags') || { amount: '0', denom: 'tags' };
-
-  return {
-    tura: turaBalance.amount,
-    tags: tagsBalance.amount
-  };
+async function getBalances(turaPublicKey) {
+  const rpc = process.env.RPC_URL; // 从环境变量中获取 RPC URL
+  const client = await StargateClient.connect(rpc);
+  const balances = await client.getAllBalances(turaPublicKey);
+  return balances;
 }
+
 module.exports = { 
   registerNewWallet, 
   getSignerFromEncryptedMnemonic, 

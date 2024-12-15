@@ -10,7 +10,7 @@ const crypto = require('crypto');
  * @param {string} turaPublicKey Tura 公钥
  * @returns {Promise<Object>} 返回新创建的钱包记录
  */
-async function createWallet(userId, cosmosPublicKey, turaPublicKey) {
+async function createWallet(userId, cosmosPublicKey, turaPublicKey, encryptedMnemonic, keyType) {
   try {
     const client = getClient();
     if (!client) {
@@ -19,23 +19,34 @@ async function createWallet(userId, cosmosPublicKey, turaPublicKey) {
 
     const query = `
       INSERT INTO discord_wallets (
-        id, 
-        user_id, 
-        cosmosPublicKey, 
-        turaPublicKey,
-        created_at,
-        updated_at
+      id, 
+      user_id, 
+      cosmosPublicKey, 
+      turaPublicKey,
+      encryptedMnemonic,
+      keyType,
+      created_at,
+      updated_at
       )
       VALUES (
-        gen_random_uuid(), $1, $2, $3, NOW(), NOW()
+      gen_random_uuid(), $1, $2, $3, $4, $5, NOW(), NOW()
       )
+      ON CONFLICT (user_id) 
+      DO UPDATE SET 
+      cosmosPublicKey = EXCLUDED.cosmosPublicKey,
+      turaPublicKey = EXCLUDED.turaPublicKey,
+      encryptedMnemonic = EXCLUDED.encryptedMnemonic,
+      keyType = EXCLUDED.keyType,
+      updated_at = NOW()
       RETURNING *;
     `;
 
     const values = [
       userId,
       cosmosPublicKey,
-      turaPublicKey
+      turaPublicKey,
+      JSON.stringify(encryptedMnemonic),
+      keyType
     ];
 
     const result = await client.query(query, values);

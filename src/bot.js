@@ -214,7 +214,25 @@ client.on("interactionCreate", async (interaction) => {
         } else {
             const turaAddress = userTuraAddresses.get(user.id);
             console.log(`[INFO] Tura Address for user ${user.id}: ${turaAddress}`);
-            const { turaBalance, tagsBalance } = await getBalances(turaAddress);
+
+            const balances = await getBalances(turaAddress);
+
+            function convertBalances(balances) {
+              let turaBalance = 0;
+              let tagsBalance = 0;
+
+              balances.forEach((balance) => {
+              if (balance.denom === 'utura') {
+                turaBalance = parseFloat(balance.amount) / 100000000;
+              } else if (balance.denom === 'utags') {
+                tagsBalance = parseFloat(balance.amount) / 100000;
+              }
+              });
+
+              return { turaBalance, tagsBalance };
+            }
+
+            const { turaBalance, tagsBalance } = convertBalances(balances);
             const { embed, buttons } = getWalletMainTemplate(user.username, turaAddress, turaBalance, tagsBalance);
             await privateChannel.send({
               embeds: [embed],

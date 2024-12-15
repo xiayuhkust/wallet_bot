@@ -401,34 +401,52 @@ client.on("interactionCreate", async (interaction) => {
       if (hasClaimed) {
         console.log(`[INFO] User ${userId} has already claimed daily rewards`);
         await interaction.reply({
-      content: "You have already claimed your daily rewards. Please try again after 24 hours.",
-      ephemeral: true,
+        content: "You have already claimed your daily rewards. Please try again after 24 hours.",
+        ephemeral: true,
         });
         return;
       }
 
-      console.log(`[INFO] Getting faucet rewards for user ${userId}`);
-      // Get the faucet rewards
-      const turaAddress = userTuraAddresses.get(userId);
-      const faucetResult = await getFaucet(turaAddress);
-      if (faucetResult.success) {
-        console.log(`[INFO] Faucet rewards received for user ${userId}`);
-        // Record the faucet claim
-        await recordFaucetClaim(userId);
+      // Inform the user that the daily reward is being processed
+      await interaction.reply({
+        content: "Your daily rewards are being processed. You will be notified once the process is complete.",
+        ephemeral: true,
+      });
 
-        await interaction.reply({
-      content: `🎉 **Congratulations!** You have received your daily rewards:\n\n` +
-         `**Amount:** ${faucetResult.amount} ${faucetResult.denom}\n\n` +
-         `Come back tomorrow for more rewards!`,
-      ephemeral: true,
+      // Process the faucet claim in a separate async function
+      (async () => {
+        try {
+        console.log(`[INFO] Getting faucet rewards for user ${userId}`);
+        const turaAddress = userTuraAddresses.get(userId);
+        const faucetResult = await getFaucet(turaAddress);
+        if (faucetResult.success) {
+          console.log(`[INFO] Faucet rewards received for user ${userId}`);
+          // Record the faucet claim
+          await recordFaucetClaim(userId);
+
+          // Notify the user of the successful claim
+          await interaction.followUp({
+          content: `🎉 **Congratulations!** You have received your daily rewards:\n\n` +
+            `**Amount:** ${faucetResult.amount} ${faucetResult.denom}\n\n` +
+            `Come back tomorrow for more rewards!`,
+          ephemeral: true,
+          });
+        } else {
+          console.log(`[ERROR] Failed to get faucet rewards for user ${userId}`);
+          await interaction.followUp({
+          content: "Failed to claim daily rewards. Please try again later.",
+          ephemeral: true,
+          });
+        }
+        } catch (error) {
+        console.error(`[ERROR] Failed to process daily rewards: ${error.message}`);
+        await interaction.followUp({
+          content: "An error occurred while processing your daily rewards. Please try again later.",
+          ephemeral: true,
         });
-      } else {
-        console.log(`[ERROR] Failed to get faucet rewards for user ${userId}`);
-        await interaction.reply({
-      content: "Failed to claim daily rewards. Please try again later.",
-      ephemeral: true,
-        });
-      }
+        }
+      })();
+
       } catch (error) {
       console.error(`[ERROR] Failed to process daily rewards: ${error.message}`);
       await interaction.reply({

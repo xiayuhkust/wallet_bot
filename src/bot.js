@@ -50,8 +50,8 @@ async function updateUserWalletAddresses(userId) {
   try {
     const wallet = await checkWallet(userId);
     if (wallet) {
-      userCosmosAddresses.set(userId, wallet.cosmosAddress);
-      userTuraAddresses.set(userId, wallet.turaAddress);
+      userCosmosAddresses.set(userId, wallet.cosmosPublicKey);
+      userTuraAddresses.set(userId, wallet.turaPublicKey);
       console.log(`[INFO] Updated wallet addresses for user ${userId}`);
       return true;
     } else {

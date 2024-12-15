@@ -53,6 +53,7 @@ async function updateUserWalletAddresses(userId) {
       userCosmosAddresses.set(userId, wallet.cosmosPublicKey);
       userTuraAddresses.set(userId, wallet.turaPublicKey);
       console.log(`[INFO] Updated wallet addresses for user ${userId}`);
+      console.log(`[DEBUG] Cosmos Address: ${wallet.cosmosPublicKey}, Tura Address: ${wallet.turaPublicKey}`);
       return true;
     } else {
       return false;

@@ -212,6 +212,7 @@ client.on("interactionCreate", async (interaction) => {
           });
         } else {
             const turaAddress = userTuraAddresses.get(user.id);
+            console.log(`[INFO] Tura Address for user ${user.id}: ${turaAddress}`);
             const { turaBalance, tagsBalance } = await getBalances(turaAddress);
             const { embed, buttons } = getWalletMainTemplate(user.username, turaAddress, turaBalance, tagsBalance);
             await privateChannel.send({

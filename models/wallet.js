@@ -31,13 +31,6 @@ async function createWallet(userId, cosmosPublicKey, turaPublicKey, encryptedMne
       VALUES (
       gen_random_uuid(), $1, $2, $3, $4, $5, NOW(), NOW()
       )
-      ON CONFLICT (user_id) 
-      DO UPDATE SET 
-      cosmosPublicKey = EXCLUDED.cosmosPublicKey,
-      turaPublicKey = EXCLUDED.turaPublicKey,
-      encryptedMnemonic = EXCLUDED.encryptedMnemonic,
-      keyType = EXCLUDED.keyType,
-      updated_at = NOW()
       RETURNING *;
     `;
 

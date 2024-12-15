@@ -215,7 +215,7 @@ async function getSignerFromEncryptedMnemonic(encryptedMnemonic, userId) {
  * @returns {Promise<Object>} 包含 Tura 和 Tags 余额的对象
  */
 async function getBalances(turaAddress) {
-  const rpcEndpoint = process.env.RPC_ENDPOINT; // 从环境变量中获取 RPC 端点
+  const rpcEndpoint = process.env.RPC_URL; // 从环境变量中获取 RPC 端点
   const client = await StargateClient.connect(rpcEndpoint);
 
   const balances = await client.getAllBalances(turaAddress);

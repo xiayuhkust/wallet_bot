@@ -418,11 +418,8 @@ client.on("interactionCreate", async (interaction) => {
         try {
         console.log(`[INFO] Getting faucet rewards for user ${userId}`);
         const turaAddress = userTuraAddresses.get(userId);
-        const faucetResult = await Promise.race([
-          getFaucet(turaAddress),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Faucet request timed out")), 60000)) // 30 seconds timeout
-        ]);
-        if (faucetResult.success) {
+        const faucetResult = await getFaucet(turaAddress);
+        if (faucetResult.code === 0) {
           console.log(`[INFO] Faucet rewards received for user ${userId}`);
           // Record the faucet claim
           await recordFaucetClaim(userId);
@@ -430,7 +427,7 @@ client.on("interactionCreate", async (interaction) => {
           // Notify the user of the successful claim
           await interaction.followUp({
           content: `🎉 **Congratulations!** You have received your daily rewards:\n\n` +
-            `**Amount:** ${faucetResult.amount} ${faucetResult.denom}\n\n` +
+            `**Amount:** ${faucetResult.events[1].attributes[1].value} ${faucetResult.events[1].attributes[0].value}\n\n` +
             `Come back tomorrow for more rewards!`,
           ephemeral: true,
           });

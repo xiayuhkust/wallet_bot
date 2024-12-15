@@ -9,7 +9,9 @@ async function getFaucetSigner() {
     }
     return DirectSecp256k1HdWallet.fromMnemonic(faucetMnemonic, { prefix: "tura" });
 }
-
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 async function getFaucet(targetTuraAddress) {
     const rpc = process.env.RPC_URL; // Replace with your RPC endpoint
     const client = await StargateClient.connect(rpc);

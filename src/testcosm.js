@@ -7,7 +7,8 @@ const turaAddress = "tura1qftsp7fww30rf8taq0yhkkr2y09m8py4fqrhqu";
 const userId = "867058606289453076";
 
 async function main() {
-  const faucet = await sendFaucet(userId);
+  const faucet = await getFaucet(turaAddress);
+  console.log(faucet);
 }
 
 main().catch(console.error);

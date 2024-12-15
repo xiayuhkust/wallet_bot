@@ -425,12 +425,18 @@ client.on("interactionCreate", async (interaction) => {
           await recordFaucetClaim(userId);
 
           // Notify the user of the successful claim
-          await interaction.followUp({
-          content: `🎉 **Congratulations!** You have received your daily rewards:\n\n` +
-            `**Amount:** ${faucetResult.events[1].attributes[1].value} ${faucetResult.events[1].attributes[0].value}\n\n` +
-            `Come back tomorrow for more rewards!`,
-          ephemeral: true,
-          });
+            const coinReceivedEvent = faucetResult.events.find(event => event.type === 'coin_received');
+            const amountAttribute = coinReceivedEvent.attributes.find(attr => attr.key === 'amount');
+            const amount = amountAttribute.value;
+            const denomAttribute = coinReceivedEvent.attributes.find(attr => attr.key === 'receiver');
+            const denom = denomAttribute.value;
+
+            await interaction.followUp({
+            content: `🎉 **Congratulations!** You have received your daily rewards:\n\n` +
+              `**Amount:** ${amount} ${denom}\n\n` +
+              `Come back tomorrow for more rewards!`,
+            ephemeral: true,
+            });
         } else {
           console.log(`[ERROR] Failed to get faucet rewards for user ${userId}`);
           await interaction.followUp({

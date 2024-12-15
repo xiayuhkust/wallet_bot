@@ -1,7 +1,10 @@
 const { DirectSecp256k1HdWallet, DirectSecp256k1Wallet } = require("@cosmjs/proto-signing");
 const crypto = require('crypto');    // 用于加密私钥和助记词
 const { createWallet, checkWallet, updatePassword } = require("../models/wallet");
+const { StargateClient } = require("@cosmjs/stargate");
 require('dotenv').config(); // 加载环境变量
+
+
 
 /**
  * 加密函数：使用用户的 Discord ID 和随机盐加密数据
@@ -206,11 +209,28 @@ async function getSignerFromEncryptedMnemonic(encryptedMnemonic, userId) {
   return DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix: "tura" });
 }
 
+/**
+ * 查询 Tura 和 Tags 余额
+ * @param {string} turaAddress Tura 钱包地址
+ * @returns {Promise<Object>} 包含 Tura 和 Tags 余额的对象
+ */
+async function getBalances(turaAddress) {
+  const rpcEndpoint = process.env.RPC_ENDPOINT; // 从环境变量中获取 RPC 端点
+  const client = await StargateClient.connect(rpcEndpoint);
 
+  const balances = await client.getAllBalances(turaAddress);
+  const turaBalance = balances.find(balance => balance.denom === 'tura') || { amount: '0', denom: 'tura' };
+  const tagsBalance = balances.find(balance => balance.denom === 'tags') || { amount: '0', denom: 'tags' };
 
+  return {
+    tura: turaBalance.amount,
+    tags: tagsBalance.amount
+  };
+}
 module.exports = { 
   registerNewWallet, 
   getSignerFromEncryptedMnemonic, 
   restoreWallet_Mnemonic, 
-  restoreWallet_PrivateKey 
+  restoreWallet_PrivateKey ,
+  getBalances
 };

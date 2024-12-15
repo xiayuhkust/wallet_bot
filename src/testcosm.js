@@ -5,8 +5,6 @@ const { StargateClient } = require("@cosmjs/stargate");
 const privatekey = "2a71ecb8fbb31eacf0dd0321c9bb6b3e34b3dc48d0362324c2f91e751c891a2a";
 const mnemonic = "position oak sadness novel monitor ridge link gasp drill convince want slam define office remind when cherry betray lab increase warm surround riot suffer";
 
-const rpc = process.env.RPC_URL; // 使用测试网的 RPC URL
-
 const getSignerFromMnemonic = async (mnemonic) => {
     return DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
         prefix: "tura",
@@ -16,6 +14,9 @@ const getSignerFromMnemonic = async (mnemonic) => {
 const getSignerFromPrivateKey = async (privateKey) => {
     return DirectSecp256k1Wallet.fromKey(Buffer.from(privateKey, "hex"), "tura");
 };
+const rpc = process.env.RPC_URL; // 使用测试网的 RPC URL
+
+
 
 const runAll = async () => {
     try {

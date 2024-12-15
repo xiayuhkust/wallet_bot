@@ -2,8 +2,8 @@ require("dotenv").config();
 const { Client, GatewayIntentBits, PermissionsBitField, ChannelType } = require("discord.js");
 const { connectToDatabase, getClient } = require("./db");
 const { handlePrivateChannelMessage } = require("./private_channel_service"); // 引入服务逻辑
-const { getWalletWelcomeTemplate } = require("./embedding_templates");
-const { registerNewWallet,  restoreWallet_Mnemonic,  restoreWallet_PrivateKey } = require("./walletController"); // 假设 wallet.js 处理钱包逻辑
+const { getWalletWelcomeTemplate,getWalletMainTemplate } = require("./embedding_templates");
+const { registerNewWallet,  restoreWallet_Mnemonic,  restoreWallet_PrivateKey, getBalances } = require("./walletController"); // 假设 wallet.js 处理钱包逻辑
 const { checkWallet } = require("../models/wallet");
 
 // 从 .env 文件加载配置
@@ -42,6 +42,26 @@ const client = new Client({
 // 创建一个 Map 用于存储用户和他们的私密频道信息
 const userChannels = new Map();
 const activityTimeouts = new Map(); // Store activity timeouts per user
+// 创建两个常数用于暂存用户的 cosmos 地址和 tura 地址
+const userCosmosAddresses = new Map();
+const userTuraAddresses = new Map();
+
+async function updateUserWalletAddresses(userId) {
+  try {
+    const wallet = await checkWallet(userId);
+    if (wallet) {
+      userCosmosAddresses.set(userId, wallet.cosmosAddress);
+      userTuraAddresses.set(userId, wallet.turaAddress);
+      console.log(`[INFO] Updated wallet addresses for user ${userId}`);
+      return true;
+    } else {
+      return false;
+    }
+  } catch (error) {
+    console.error(`[ERROR] Failed to update wallet addresses for user ${userId}: ${error.message}`);
+    return false;
+  }
+}
 // 确保 FrontDesk 类别存在
 async function ensureFrontDeskCategory(guild) {
   const categoryName = "FrontDesk";
@@ -183,11 +203,22 @@ client.on("interactionCreate", async (interaction) => {
         });
 
         // Send wallet welcome template
-        const { embed, buttons } = getWalletWelcomeTemplate(user.username);
-        await privateChannel.send({
-          embeds: [embed],
-          components: [buttons],
-        });
+        const walletUpdated = await updateUserWalletAddresses(user.id);
+        if (!walletUpdated) {
+          const { embed, buttons } = getWalletWelcomeTemplate(user.username);
+          await privateChannel.send({
+            embeds: [embed],
+            components: [buttons],
+          });
+        } else {
+            const turaAddress = userTuraAddresses.get(user.id);
+            const { turaBalance, tagsBalance } = await getBalances(turaAddress);
+            const { embed, buttons } = getWalletMainTemplate(user.username, turaAddress, turaBalance, tagsBalance);
+            await privateChannel.send({
+              embeds: [embed],
+              components: [buttons],
+            });
+        }
 
         console.log(`[INFO] Sent wallet welcome embed to channel: ${privateChannel.name}`);
 
@@ -284,15 +315,14 @@ client.on("interactionCreate", async (interaction) => {
       console.log(`[INFO] User ${interaction.user.tag} clicked Create Wallet`);
   
       // 检查用户是否已有钱包
-      const existingWallet = await checkWallet(userId);
-      if (existingWallet) {
+      const walletUpdated = await updateUserWalletAddresses(userId);
+      if (walletUpdated) {
         await interaction.reply({
           content: "You already have a wallet. You can change your wallet by clicking Redirect.",
           ephemeral: true,
         });
         return;
       }
-  
       // 创建钱包并向用户反馈
       try {
         const wallet = await registerNewWallet(interaction.user.id);

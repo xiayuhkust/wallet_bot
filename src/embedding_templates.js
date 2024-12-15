@@ -33,6 +33,45 @@ function getWalletWelcomeTemplate(userName) {
   return { embed, buttons };
 }
 
+/**
+ * 创建钱包主页面 Embedding 模板
+ */
+function getWalletMainTemplate(userName, turaAddress, turaBalance, tagsBalance) {
+  // 构建嵌入内容
+  const embed = new EmbedBuilder()
+    .setColor(0x1e90ff) // 设置主题颜色
+    .setTitle("💼 Your TagFusion Wallet")
+    .setDescription(
+      `Hello **${userName}**! Here is the overview of your wallet:\n\n` +
+      `🔹 **Tura Address**: \`${turaAddress}\`\n` +
+      `🔹 **Tura Balance**: \`${turaBalance} TURA\`\n` +
+      `🔹 **Tags Balance**: \`${tagsBalance} TAGS\`\n\n` +
+      `Use the buttons below to manage your wallet.`
+    )
+    .setFooter({ text: "Your wallet. Your control. Manage wisely!" })
+    .setTimestamp();
+
+  // 构建按钮
+  const buttons = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("send_tura")
+      .setLabel("Send Tura")
+      .setStyle(ButtonStyle.Primary), // 主要样式（蓝色）
+    new ButtonBuilder()
+      .setCustomId("receive_tura")
+      .setLabel("Receive Tura")
+      .setStyle(ButtonStyle.Success), // 成功样式（绿色）
+    new ButtonBuilder()
+      .setCustomId("view_transactions")
+      .setLabel("View Transactions")
+      .setStyle(ButtonStyle.Secondary) // 次要样式（灰色）
+  );
+
+  return { embed, buttons };
+}
+
 module.exports = {
   getWalletWelcomeTemplate,
+  getWalletMainTemplate,
 };
+

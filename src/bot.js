@@ -317,128 +317,129 @@ client.on("interactionCreate", async (interaction) => {
     }
   } 
   // 处理按钮交互
-  else if (interaction.isButton()) {
+   if (interaction.isButton()) {
     // 获取当前用户和频道信息
     const userId = interaction.user.id;
     const channelId = interaction.channel.id;
-  
+    
     // 验证按钮交互是否在用户的私密频道中
     if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
       await interaction.reply({
-        content: "You are not authorized to interact in this channel.",
-        ephemeral: true, // 仅对当前用户显示
+      content: "You are not authorized to interact in this channel.",
+      ephemeral: true, // 仅对当前用户显示
       });
       return; // 停止进一步处理
     }
-  
+    
     if (interaction.customId === "create_wallet") {
       console.log(`[INFO] User ${interaction.user.tag} clicked Create Wallet`);
-  
+    
       // 检查用户是否已有钱包
       const walletUpdated = await updateUserWalletAddresses(userId);
       if (walletUpdated) {
-        await interaction.reply({
-          content: "You already have a wallet. You can change your wallet by clicking Redirect.",
-          ephemeral: true,
-        });
-        return;
+      await interaction.reply({
+        content: "You already have a wallet. You can change your wallet by clicking Redirect.",
+        ephemeral: true,
+      });
+      return;
       }
       // 创建钱包并向用户反馈
       try {
-        const wallet = await registerNewWallet(interaction.user.id);
-  
-        // 构建反馈信息
-        const replyMessage = await interaction.reply({
-          content:
-            `🎉 **Your Tura Wallet has been created!**\n\n` +
-            `**Cosmos Address:** \`${wallet.cosmosAddress}\`\n` +
-            `**Tura Address:** \`${wallet.turaAddress}\`\n\n` +
-            `🔑 **Important:** Below is your mnemonic (seed phrase). This is the only way to recover your wallet if you lose access.\n\n` +
-            `**Mnemonic:** \`${wallet.mnemonic}\`\n\n` +
-            `⚠️ **Please save your mnemonic securely. Do NOT share it with anyone.**\n` +
-            `This message will not be saved and will be deleted in 3 minutes for security reasons. Make sure to manually delete this message after saving.`,
-          ephemeral: true, // 确保消息仅对用户可见
-        });
-  
-        // 设置 3 分钟后自动删除消息
-        setTimeout(async () => {
-          try {
-            await replyMessage.delete();
-            console.log(`[INFO] Deleted wallet information message for ${interaction.user.tag}`);
-          } catch (error) {
-            console.error(`[ERROR] Failed to delete wallet information message: ${error.message}`);
-          }
-        }, 3 * 60 * 1000);
-  
-        console.log(`[SUCCESS] Wallet details sent to ${interaction.user.tag}`);
+      const wallet = await registerNewWallet(interaction.user.id);
+    
+      // 构建反馈信息
+      const replyMessage = await interaction.reply({
+        content:
+        `🎉 **Your Tura Wallet has been created!**\n\n` +
+        `**Cosmos Address:** \`${wallet.cosmosAddress}\`\n` +
+        `**Tura Address:** \`${wallet.turaAddress}\`\n\n` +
+        `🔑 **Important:** Below is your mnemonic (seed phrase). This is the only way to recover your wallet if you lose access.\n\n` +
+        `**Mnemonic:** \`${wallet.mnemonic}\`\n\n` +
+        `⚠️ **Please save your mnemonic securely. Do NOT share it with anyone.**\n` +
+        `This message will not be saved and will be deleted in 3 minutes for security reasons. Make sure to manually delete this message after saving.`,
+        ephemeral: true, // 确保消息仅对用户可见
+      });
+    
+      // 设置 3 分钟后自动删除消息
+      setTimeout(async () => {
+        try {
+        await replyMessage.delete();
+        console.log(`[INFO] Deleted wallet information message for ${interaction.user.tag}`);
+        } catch (error) {
+        console.error(`[ERROR] Failed to delete wallet information message: ${error.message}`);
+        }
+      }, 3 * 60 * 1000);
+    
+      console.log(`[SUCCESS] Wallet details sent to ${interaction.user.tag}`);
       } catch (error) {
-        console.error(`[ERROR] Failed to create wallet: ${error.message}`);
-        await interaction.reply({
-          content: "An error occurred while creating your wallet. Please try again later.",
-          ephemeral: true,
-        });
+      console.error(`[ERROR] Failed to create wallet: ${error.message}`);
+      await interaction.reply({
+        content: "An error occurred while creating your wallet. Please try again later.",
+        ephemeral: true,
+      });
       }
     }
     else if (interaction.customId === "restore_wallet") {
       console.log(`[INFO] User ${interaction.user.tag} clicked Restore Wallet`);
       await interaction.reply({
-        content: 'To restore your wallet, please use the command `/restore_wallet`.',
-        ephemeral: true,
+      content: 'To restore your wallet, please use the command `/restore_wallet`.',
+      ephemeral: true,
       });
     }
+
     else if (interaction.customId === "Daily_Rewards") {
       console.log(`[INFO] User ${interaction.user.tag} clicked Daily Rewards`);
 
       console.log(`[INFO] User ${interaction.user.tag} clicked Daily Rewards - Start`);
 
       try {
-        const userId = interaction.user.id;
+      const userId = interaction.user.id;
 
-        console.log(`[INFO] Checking faucet claim for user ${userId}`);
-        // Check if the user has already claimed the faucet within the last 24 hours
-        const hasClaimed = await checkFaucetClaim(userId);
-        if (hasClaimed) {
-          console.log(`[INFO] User ${userId} has already claimed daily rewards`);
-          await interaction.reply({
-        content: "You have already claimed your daily rewards. Please try again after 24 hours.",
-        ephemeral: true,
-          });
-          return;
-        }
-
-        console.log(`[INFO] Getting faucet rewards for user ${userId}`);
-        // Get the faucet rewards
-        const turaAddress = userTuraAddresses.get(userId);
-        const faucetResult = await getFaucet(turaAddress);
-        if (faucetResult.success) {
-          console.log(`[INFO] Faucet rewards received for user ${userId}`);
-          // Record the faucet claim
-          await recordFaucetClaim(userId);
-
-          await interaction.reply({
-        content: `🎉 **Congratulations!** You have received your daily rewards:\n\n` +
-             `**Amount:** ${faucetResult.amount} ${faucetResult.denom}\n\n` +
-             `Come back tomorrow for more rewards!`,
-        ephemeral: true,
-          });
-        } else {
-          console.log(`[ERROR] Failed to get faucet rewards for user ${userId}`);
-          await interaction.reply({
-        content: "Failed to claim daily rewards. Please try again later.",
-        ephemeral: true,
-          });
-        }
-      } catch (error) {
-        console.error(`[ERROR] Failed to process daily rewards: ${error.message}`);
+      console.log(`[INFO] Checking faucet claim for user ${userId}`);
+      // Check if the user has already claimed the faucet within the last 24 hours
+      const hasClaimed = await checkFaucetClaim(userId);
+      if (hasClaimed) {
+        console.log(`[INFO] User ${userId} has already claimed daily rewards`);
         await interaction.reply({
-          content: "An error occurred while processing your daily rewards. Please try again later.",
-          ephemeral: true,
+      content: "You have already claimed your daily rewards. Please try again after 24 hours.",
+      ephemeral: true,
         });
+        return;
+      }
+
+      console.log(`[INFO] Getting faucet rewards for user ${userId}`);
+      // Get the faucet rewards
+      const turaAddress = userTuraAddresses.get(userId);
+      const faucetResult = await getFaucet(turaAddress);
+      if (faucetResult.success) {
+        console.log(`[INFO] Faucet rewards received for user ${userId}`);
+        // Record the faucet claim
+        await recordFaucetClaim(userId);
+
+        await interaction.reply({
+      content: `🎉 **Congratulations!** You have received your daily rewards:\n\n` +
+         `**Amount:** ${faucetResult.amount} ${faucetResult.denom}\n\n` +
+         `Come back tomorrow for more rewards!`,
+      ephemeral: true,
+        });
+      } else {
+        console.log(`[ERROR] Failed to get faucet rewards for user ${userId}`);
+        await interaction.reply({
+      content: "Failed to claim daily rewards. Please try again later.",
+      ephemeral: true,
+        });
+      }
+      } catch (error) {
+      console.error(`[ERROR] Failed to process daily rewards: ${error.message}`);
+      await interaction.reply({
+        content: "An error occurred while processing your daily rewards. Please try again later.",
+        ephemeral: true,
+      });
       }
 
       console.log(`[INFO] User ${interaction.user.tag} clicked Daily Rewards - End`);
     }
-  }
+    }
 });
 
 /*

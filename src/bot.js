@@ -389,12 +389,16 @@ client.on("interactionCreate", async (interaction) => {
     else if (interaction.customId === "Daily_Rewards") {
       console.log(`[INFO] User ${interaction.user.tag} clicked Daily Rewards`);
 
+      console.log(`[INFO] User ${interaction.user.tag} clicked Daily Rewards - Start`);
+
       try {
         const userId = interaction.user.id;
 
+        console.log(`[INFO] Checking faucet claim for user ${userId}`);
         // Check if the user has already claimed the faucet within the last 24 hours
         const hasClaimed = await checkFaucetClaim(userId);
         if (hasClaimed) {
+          console.log(`[INFO] User ${userId} has already claimed daily rewards`);
           await interaction.reply({
         content: "You have already claimed your daily rewards. Please try again after 24 hours.",
         ephemeral: true,
@@ -402,10 +406,12 @@ client.on("interactionCreate", async (interaction) => {
           return;
         }
 
+        console.log(`[INFO] Getting faucet rewards for user ${userId}`);
         // Get the faucet rewards
         const turaAddress = userTuraAddresses.get(userId);
         const faucetResult = await getFaucet(turaAddress);
         if (faucetResult.success) {
+          console.log(`[INFO] Faucet rewards received for user ${userId}`);
           // Record the faucet claim
           await recordFaucetClaim(userId);
 
@@ -416,6 +422,7 @@ client.on("interactionCreate", async (interaction) => {
         ephemeral: true,
           });
         } else {
+          console.log(`[ERROR] Failed to get faucet rewards for user ${userId}`);
           await interaction.reply({
         content: "Failed to claim daily rewards. Please try again later.",
         ephemeral: true,
@@ -428,6 +435,8 @@ client.on("interactionCreate", async (interaction) => {
           ephemeral: true,
         });
       }
+
+      console.log(`[INFO] User ${interaction.user.tag} clicked Daily Rewards - End`);
     }
   }
 });

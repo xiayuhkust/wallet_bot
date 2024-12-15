@@ -420,7 +420,7 @@ client.on("interactionCreate", async (interaction) => {
         const turaAddress = userTuraAddresses.get(userId);
         const faucetResult = await Promise.race([
           getFaucet(turaAddress),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Faucet request timed out")), 10000)) // 10 seconds timeout
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Faucet request timed out")), 20000)) // 10 seconds timeout
         ]);
         if (faucetResult.success) {
           console.log(`[INFO] Faucet rewards received for user ${userId}`);

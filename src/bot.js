@@ -403,7 +403,8 @@ client.on("interactionCreate", async (interaction) => {
         }
 
         // Get the faucet rewards
-        const faucetResult = await getFaucet(userId);
+        const turaAddress = userTuraAddresses.get(userId);
+        const faucetResult = await getFaucet(turaAddress);
         if (faucetResult.success) {
           // Record the faucet claim
           await recordFaucetClaim(userId);

@@ -49,11 +49,11 @@ const userTuraAddresses = new Map();
 async function updateUserWalletAddresses(userId) {
   try {
     const wallet = await checkWallet(userId);
-    if (wallet) {
-      userCosmosAddresses.set(userId, wallet.cosmosPublicKey);
-      userTuraAddresses.set(userId, wallet.turaPublicKey);
+    if (wallet && wallet.cosmospublickey && wallet.turapublickey) {
+      userCosmosAddresses.set(userId, wallet.cosmospublickey);
+      userTuraAddresses.set(userId, wallet.turapublickey);
       console.log(`[INFO] Updated wallet addresses for user ${userId}`);
-      console.log(`[DEBUG] Cosmos Address: ${wallet.cosmosPublicKey}, Tura Address: ${wallet.turaPublicKey}`);
+      console.log(`[DEBUG] Cosmos Address: ${wallet.cosmospublickey}, Tura Address: ${wallet.turapublickey}`);
       return true;
     } else {
       return false;

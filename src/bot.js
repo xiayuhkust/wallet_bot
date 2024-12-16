@@ -305,7 +305,15 @@ client.on("interactionCreate", async (interaction) => {
         `🔑 **Important:** Please make sure to keep your wallet information secure.`,
         ephemeral: true,
       });
-
+      const turaAddress = userTuraAddresses.get(user.id);
+      const balances = await getBalances(turaAddress);
+      const { turaBalance, tagsBalance } = convertBalances(balances);
+      const { embed, buttons } = getWalletMainTemplate(interaction.user.username, turaAddress, turaBalance, tagsBalance);
+      await interaction.followUp({
+        embeds: [embed],
+        components: [buttons],
+        ephemeral: true,
+      });
       console.log(`[SUCCESS] Wallet restored for ${interaction.user.tag}`);
       } catch (error) {
       console.error(`[ERROR] Failed to restore wallet: ${error.message}`);
@@ -359,7 +367,15 @@ client.on("interactionCreate", async (interaction) => {
         `This message will not be saved and will be deleted in 3 minutes for security reasons. Make sure to manually delete this message after saving.`,
         ephemeral: true, // 确保消息仅对用户可见
       });
-    
+      const turaAddress = userTuraAddresses.get(user.id);
+      const balances = await getBalances(turaAddress);
+      const { turaBalance, tagsBalance } = convertBalances(balances);
+      const { embed, buttons } = getWalletMainTemplate(interaction.user.username, turaAddress, turaBalance, tagsBalance);
+      await interaction.followUp({
+        embeds: [embed],
+        components: [buttons],
+        ephemeral: true,
+      });
       // 设置 3 分钟后自动删除消息
       setTimeout(async () => {
         try {
@@ -424,16 +440,18 @@ client.on("interactionCreate", async (interaction) => {
           // Record the faucet claim
           await recordFaucetClaim(userId);
 
-          // Notify the user of the successful claim
-            const coinReceivedEvent = faucetResult.events.find(event => event.type === 'coin_received');
-            const amountAttribute = coinReceivedEvent.attributes.find(attr => attr.key === 'amount');
-            const amount = amountAttribute.value;
-            const denomAttribute = coinReceivedEvent.attributes.find(attr => attr.key === 'receiver');
-            const denom = denomAttribute.value;
+            // Notify the user of the successful claim
+            const turaAddress = userTuraAddresses.get(userId);
+            const balances = await getBalances(turaAddress);
+            const { turaBalance, tagsBalance } = convertBalances(balances);
+
+            const rewardAmount = 0.1; // 0.1 TURA
+            const newTuraBalance = turaBalance + rewardAmount;
 
             await interaction.followUp({
             content: `🎉 **Congratulations!** You have received your daily rewards:\n\n` +
-              `**Amount:** ${amount} ${denom}\n\n` +
+              `**Amount:** 0.1 TURA\n\n` +
+              `**New TURA Balance:** ${newTuraBalance} TURA\n\n` +
               `Come back tomorrow for more rewards!`,
             ephemeral: true,
             });

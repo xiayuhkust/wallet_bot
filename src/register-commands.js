@@ -24,6 +24,10 @@ const commands = [
         required: false,
       },
     ],
+  },
+  {
+    name: "wallet_main",
+    description: "View the main page of your wallet",
   }
 ];
 

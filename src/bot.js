@@ -90,6 +90,35 @@ function isMessageFromValidChannel(userId, channelId) {
   return userChannelId === channelId;
 }
 
+async function sendWalletMainTemplate(userId, privateChannel) {
+  const turaAddress = userTuraAddresses.get(userId);
+  console.log(`[INFO] Tura Address for user ${userId}: ${turaAddress}`);
+
+  const balances = await getBalances(turaAddress);
+
+  function convertBalances(balances) {
+    let turaBalance = 0;
+    let tagsBalance = 0;
+
+    balances.forEach((balance) => {
+      if (balance.denom === 'utura') {
+        turaBalance = parseFloat(balance.amount) / 100000000;
+      } else if (balance.denom === 'utags') {
+        tagsBalance = parseFloat(balance.amount) / 100000;
+      }
+    });
+
+    return { turaBalance, tagsBalance };
+  }
+
+  const { turaBalance, tagsBalance } = convertBalances(balances);
+  const { embed, buttons } = getWalletMainTemplate(userId, turaAddress, turaBalance, tagsBalance);
+  await privateChannel.send({
+    embeds: [embed],
+    components: [buttons],
+  });
+}
+
 // Reset the activity timeout for the user
 function resetActivityTimeout(userId, privateChannel) {
   // Clear the previous timeout if any
@@ -212,32 +241,7 @@ client.on("interactionCreate", async (interaction) => {
             components: [buttons],
           });
         } else {
-            const turaAddress = userTuraAddresses.get(user.id);
-            console.log(`[INFO] Tura Address for user ${user.id}: ${turaAddress}`);
-
-            const balances = await getBalances(turaAddress);
-
-            function convertBalances(balances) {
-              let turaBalance = 0;
-              let tagsBalance = 0;
-
-              balances.forEach((balance) => {
-              if (balance.denom === 'utura') {
-                turaBalance = parseFloat(balance.amount) / 100000000;
-              } else if (balance.denom === 'utags') {
-                tagsBalance = parseFloat(balance.amount) / 100000;
-              }
-              });
-
-              return { turaBalance, tagsBalance };
-            }
-
-            const { turaBalance, tagsBalance } = convertBalances(balances);
-            const { embed, buttons } = getWalletMainTemplate(user.username, turaAddress, turaBalance, tagsBalance);
-            await privateChannel.send({
-              embeds: [embed],
-              components: [buttons],
-            });
+            await sendWalletMainTemplate(user.id, privateChannel);
         }
 
         console.log(`[INFO] Sent wallet welcome embed to channel: ${privateChannel.name}`);
@@ -260,6 +264,37 @@ client.on("interactionCreate", async (interaction) => {
         console.error("[ERROR] Failed to create private channel:", error);
         await interaction.reply({
           content: "An error occurred while creating your private channel. Please try again later.",
+          ephemeral: true,
+        });
+      }
+    }
+    else if (interaction.commandName === "wallet_main") {
+      // 获取当前用户和频道信息
+      const userId = interaction.user.id;
+      const channelId = interaction.channel.id;
+
+      // 验证命令是否在用户的私密频道中
+      if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
+        await interaction.reply({
+          content: "You are not authorized to interact in this channel.",
+          ephemeral: true, // 仅对当前用户显示
+        });
+        return; // 停止进一步处理
+      }
+
+      console.log(`[INFO] Handling command: /wallet_main from user ${interaction.user.tag}`);
+
+      try {
+        const privateChannel = interaction.guild.channels.cache.get(channelId);
+        await sendWalletMainTemplate(userId, privateChannel);
+        await interaction.reply({
+          content: "Your wallet main interface has been updated.",
+          ephemeral: true,
+        });
+      } catch (error) {
+        console.error(`[ERROR] Failed to send wallet main template: ${error.message}`);
+        await interaction.reply({
+          content: "An error occurred while updating your wallet main interface. Please try again later.",
           ephemeral: true,
         });
       }
@@ -302,16 +337,7 @@ client.on("interactionCreate", async (interaction) => {
         `🎉 **Your Tura Wallet has been restored!**\n\n` +
         `**Cosmos Address:** \`${wallet.cosmosAddress}\`\n` +
         `**Tura Address:** \`${wallet.turaAddress}\`\n\n` +
-        `🔑 **Important:** Please make sure to keep your wallet information secure.`,
-        ephemeral: true,
-      });
-      const turaAddress = userTuraAddresses.get(user.id);
-      const balances = await getBalances(turaAddress);
-      const { turaBalance, tagsBalance } = convertBalances(balances);
-      const { embed, buttons } = getWalletMainTemplate(interaction.user.username, turaAddress, turaBalance, tagsBalance);
-      await interaction.followUp({
-        embeds: [embed],
-        components: [buttons],
+        `You can view your wallet main interface by typing \`/wallet_main\`.`,
         ephemeral: true,
       });
       console.log(`[SUCCESS] Wallet restored for ${interaction.user.tag}`);
@@ -364,18 +390,12 @@ client.on("interactionCreate", async (interaction) => {
         `🔑 **Important:** Below is your mnemonic (seed phrase). This is the only way to recover your wallet if you lose access.\n\n` +
         `**Mnemonic:** \`${wallet.mnemonic}\`\n\n` +
         `⚠️ **Please save your mnemonic securely. Do NOT share it with anyone.**\n` +
-        `This message will not be saved and will be deleted in 3 minutes for security reasons. Make sure to manually delete this message after saving.`,
+        `This message will not be saved and will be deleted in 3 minutes for security reasons. Make sure to manually delete this message after saving.\n` +
+        `You can view your wallet main interface by typing \`/wallet_main\`.`,
         ephemeral: true, // 确保消息仅对用户可见
       });
-      const turaAddress = userTuraAddresses.get(user.id);
-      const balances = await getBalances(turaAddress);
-      const { turaBalance, tagsBalance } = convertBalances(balances);
-      const { embed, buttons } = getWalletMainTemplate(interaction.user.username, turaAddress, turaBalance, tagsBalance);
-      await interaction.followUp({
-        embeds: [embed],
-        components: [buttons],
-        ephemeral: true,
-      });
+
+
       // 设置 3 分钟后自动删除消息
       setTimeout(async () => {
         try {

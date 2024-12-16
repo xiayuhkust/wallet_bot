@@ -84,6 +84,21 @@ async function ensureFrontDeskCategory(guild) {
   console.log(`[INFO] Created FrontDesk category.`);
   return newCategory;
 }
+
+function convertBalances(balances) {
+  let turaBalance = 0;
+  let tagsBalance = 0;
+
+  balances.forEach((balance) => {
+    if (balance.denom === 'utura') {
+      turaBalance = parseFloat(balance.amount) / 100000000;
+    } else if (balance.denom === 'utags') {
+      tagsBalance = parseFloat(balance.amount) / 100000;
+    }
+  });
+
+  return { turaBalance, tagsBalance };
+}
 //消息是否来自私密频道
 function isMessageFromValidChannel(userId, channelId) {
   const userChannelId = userChannels.get(userId);
@@ -96,20 +111,6 @@ async function sendWalletMainTemplate(userId, privateChannel) {
 
   const balances = await getBalances(turaAddress);
 
-  function convertBalances(balances) {
-    let turaBalance = 0;
-    let tagsBalance = 0;
-
-    balances.forEach((balance) => {
-      if (balance.denom === 'utura') {
-        turaBalance = parseFloat(balance.amount) / 100000000;
-      } else if (balance.denom === 'utags') {
-        tagsBalance = parseFloat(balance.amount) / 100000;
-      }
-    });
-
-    return { turaBalance, tagsBalance };
-  }
 
   const { turaBalance, tagsBalance } = convertBalances(balances);
   const { embed, buttons } = getWalletMainTemplate(userId, turaAddress, turaBalance, tagsBalance);

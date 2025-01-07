@@ -551,7 +551,7 @@ async function handleMessage(message) {
       case 'Account Security and Privacy':
       case 'Claiming Rewards':
       case 'Tag Services':
-        const { embed, buttons } = getTagsViewTemplate({
+        const { embed } = getTagsViewTemplate({
           "Dex": [
             "Uniswap",
             "SushiSwap",
@@ -567,10 +567,11 @@ async function handleMessage(message) {
             "Gods Unchained",
           ]
         });
+        
         await message.channel.send({
-          embeds: [embed],
-          components: [buttons],
+          embeds: [embed]  // 只发送 embed
         });
+        
       case 'Casual Chat':
       default:
         await interaction.reply({

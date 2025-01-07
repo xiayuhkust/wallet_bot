@@ -14,7 +14,9 @@ const openai = new OpenAI({
 
 // 处理用户消息的函数
 async function processUserMessage_generalagent(message, topic) {
-    const userMessageContent = message.content;
+    // 获取用户消息内容，确保消息内容有效
+    const userMessageContent = message.content || '';
+
     // 设置系统消息提示
     const systemMessage = {
         role: 'system',
@@ -37,32 +39,27 @@ async function processUserMessage_generalagent(message, topic) {
             model: "deepseek-chat",
         });
 
-        const responseText = result.choices[0].userMessageContent.trim();
+        // 确保 result 及其字段有效后再访问
+        const responseText = result.choices && result.choices[0] && result.choices[0].message && result.choices[0].message.content
+            ? result.choices[0].message.content.trim()  // 对返回的内容进行 trim() 处理
+            : '';  // 如果没有有效内容，返回空字符串
+
         console.log('GPT-4o-mini response:', responseText);
 
         // 在响应后附加相关的嵌入界面提示
         let additionalInfo = '';
         if (topic === 'Account Information') {
-            additionalInfo = "\n\nYou can check your wallet information through the embedded interface below.";
-        } else if (topic === 'Transfer Services') {
-            additionalInfo = "\n\nYou can use the embedded interface to initiate transfers.";
-        } else if (topic === 'Account Security and Privacy') {
-            additionalInfo = "\n\nFor more details on security, check the relevant embedded interface.";
-        } else if (topic === 'Claiming Rewards') {
-            additionalInfo = "\n\nUse the embedded interface to claim your daily rewards.";
-        } else if (topic === 'Tag Services') {
-            additionalInfo = "\n\nCheck out the embedded interface for managing your tags.";
-        } else if (topic === 'Casual Chat') {
-            additionalInfo = "";
+            additionalInfo = 'Please make sure your account is verified.';
         }
 
-        return responseText + additionalInfo;  // 返回 GPT 响应和相关提示
+        // 你可以将 additionalInfo 作为附加信息返回给用户
+        return responseText + additionalInfo;
+
     } catch (error) {
-        console.error("Error processing message:", error);
-        return "Sorry, there was an error processing your request.";
+        console.error('Error processing message:', error);
+        return 'An error occurred while processing your request. Please try again later.';
     }
 }
-
 
 // Predefined list of topics
 const topics = [

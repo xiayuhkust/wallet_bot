@@ -571,16 +571,15 @@ async function handleMessage(message) {
         await message.channel.send({
           embeds: [embed]  // 只发送 embed
         });
-        
+        break;
       case 'Casual Chat':
       default:
         await interaction.reply({
           content: response,
           ephemeral: true,
         });
+        break;
   }
-
-
 
 
 }

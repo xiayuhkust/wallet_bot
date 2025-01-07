@@ -101,8 +101,8 @@ async function filterManager(message) {
         return 'Casual Chat';  // 出错时，返回默认分类
     }
 }
-
-async function ChatgptReply(message) {
+/*
+async function Chatgpt(message) {
     // 使用 filterManager 判断消息的主题
     const topic = await filterManager(message);
     console.log('Detected Topic:', topic);  // 打印检测到的主题
@@ -130,7 +130,7 @@ async function runTests() {
 
 // 启动测试
 runTests();
-
+*/
 module.exports = {
     filterManager,processUserMessage_generalagent
 };

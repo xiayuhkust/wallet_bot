@@ -63,7 +63,7 @@ function getWalletMainTemplate(userName, turaAddress, turaBalance, tagsBalance) 
 }
 
 /**
- * 创建查看 Tag 的 Embedding 模板
+ * 创建查看 Tag 的 Embedding 模板,假设可以得到一个Json列表
  */
 function getTagsViewTemplate(tagsJson) {
   // 构建嵌入内容

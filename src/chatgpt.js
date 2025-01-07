@@ -73,7 +73,8 @@ const topics = [
 
 // 分类消息的函数
 async function filterManager(message) {
-    const userMessageContent = message.content;
+    const userMessageContent = message.content || ''; // 确保内容存在，不为空
+
     // 动态构建话题列表
     const topicsList = topics.join(", ");
 
@@ -94,20 +95,23 @@ async function filterManager(message) {
             model: "deepseek-chat",
         });
 
-        const responseText = result.choices[0].userMessageContent.trim();
-        console.log('FilterManager response:', responseText);
+        // 获取模型返回的分类结果
+        const responseText = result.choices[0].message.content.trim(); // 确保使用正确的字段来获取返回的内容
+        console.log('FilterManager response:', responseText); // 打印结果以便调试
 
         // 确保返回的分类是预定义的某个话题
         if (topics.includes(responseText)) {
             return responseText;
         } else {
-            return 'Casual Chat';  // 如果返回的分类无效，则默认是 "Casual Chat"
+            console.warn('Unrecognized category:', responseText); // 如果返回值不在预定义话题列表中，警告
+            return 'Uncategorized'; // 返回一个默认值，表示未识别的分类
         }
     } catch (error) {
-        console.error("Error processing message:", error);
-        return 'Casual Chat';  // 出错时，返回默认分类
+        console.error('Error during category filtering:', error); // 捕获并打印错误
+        return 'Error'; // 如果发生错误，返回错误分类
     }
 }
+
 
 module.exports = {
     filterManager,processUserMessage_generalagent

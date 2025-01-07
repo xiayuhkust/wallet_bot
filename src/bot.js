@@ -545,7 +545,7 @@ async function handleMessage(message) {
   const response = await processUserMessage_generalagent(message, topic);
   //console.log('Response from General Agent:', response);  // 打印生成的回复
   // 根据分类处理消息
-  switch (category) {
+  switch (topic) {
       case 'Account Information':
       case 'Transfer Services':
       case 'Account Security and Privacy':

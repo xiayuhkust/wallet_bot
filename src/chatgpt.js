@@ -29,9 +29,8 @@ async function processUserMessage_generalagent(message, topic) {
     try {
         // 调用 GPT-4o-mini 完成对话
         const result = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',  // 使用 gpt-4o-mini 模型
             messages: conversationlog,
-            max_tokens: 3000,  // 调整响应长度
+            model: "deepseek-chat",
         });
 
         const responseText = result.choices[0].message.content;
@@ -89,9 +88,8 @@ async function filterManager(message) {
     try {
         // 调用 GPT-4 进行消息分类
         const result = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
             messages: conversationlog,
-            max_tokens: 150, // 保证返回简短的分类结果
+            model: "deepseek-chat",
         });
 
         const responseText = result.choices[0].message.content.trim();
@@ -108,36 +106,7 @@ async function filterManager(message) {
         return 'Casual Chat';  // 出错时，返回默认分类
     }
 }
-/*
-async function Chatgpt(message) {
-    // 使用 filterManager 判断消息的主题
-    const topic = await filterManager(message);
-    console.log('Detected Topic:', topic);  // 打印检测到的主题
 
-    // 根据检测到的主题将消息传递给 processUserMessage_generalagent 生成回复
-    const response = await processUserMessage_generalagent(message, topic);
-    console.log('Response from General Agent:', response);  // 打印生成的回复
-}
-
-// 测试不同的问题
-async function runTests() {
-    const testMessages = [
-        "How can I check my wallet balance?",
-        "How do I transfer my tokens?",
-        "What steps should I take to secure my account?",
-        "How can I claim my daily rewards?",
-        "Tell me a joke, let's chat!"
-    ];
-
-    for (let message of testMessages) {
-        console.log(`\nTesting message: "${message}"`);
-        await Chatgpt(message);  // 执行测试
-    }
-}
-
-// 启动测试
-runTests();
-*/
 module.exports = {
     filterManager,processUserMessage_generalagent
 };

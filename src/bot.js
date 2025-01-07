@@ -558,7 +558,6 @@ async function handleMessage(message) {
             "PancakeSwap",
             "Curve Finance",
             "1inch",
-            "Balancer"
           ],
           "GameFi": [
             "Axie Infinity",
@@ -566,7 +565,6 @@ async function handleMessage(message) {
             "Decentraland",
             "Illuvium",
             "Gods Unchained",
-            "Star Atlas"
           ]
         });
         await message.channel.send({

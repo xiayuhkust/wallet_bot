@@ -9,7 +9,7 @@ const openai = new OpenAI({
 // 创建 DeepSeek 客户端
 const openai = new OpenAI({
     baseURL: 'https://api.deepseek.com',
-    DeepSeekAPI: process.env.OpenAIAPIKey,
+    apiKey: process.env.DeepSeekAPI,
 });
 
 // 处理用户消息的函数

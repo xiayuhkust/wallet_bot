@@ -23,7 +23,7 @@ async function processUserMessage_generalagent(message, topic) {
     // 用户消息
     const conversationlog = [
         systemMessage,
-        { role: 'user', content: message }
+        { role: 'user', content: message.content }
     ];
 
     console.log('System message (messages[0]):', conversationlog[0]);
@@ -85,7 +85,7 @@ async function filterManager(message) {
 
     const conversationlog = [
         systemMessage,
-        { role: 'user', content: message }
+        { role: 'user', content: message.content }
     ];
 
     try {

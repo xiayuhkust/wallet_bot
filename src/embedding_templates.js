@@ -66,27 +66,28 @@ function getWalletMainTemplate(userName, turaAddress, turaBalance, tagsBalance) 
  * 创建查看 Tag 的 Embedding 模板,假设可以得到一个Json列表
  */
 function getTagsViewTemplate(tagsJson) {
+  // 初始化文本描述
+  let descriptionText = "Here are the tags categorized for your convenience:\n\n";
+
+  // 遍历每个类别并将标签内容整理为文本
+  for (const category in tagsJson) {
+    if (tagsJson.hasOwnProperty(category)) {
+      const tags = tagsJson[category].join("\n"); // 将标签转换为每行一个
+      descriptionText += `**${category}**:\n${tags}\n\n`;  // 合并到文本中
+    }
+  }
+
   // 构建嵌入内容
   const embed = new EmbedBuilder()
     .setColor(0xffa500) // 设置主题颜色
     .setTitle("🔖 TagFusion Tags Overview")
-    .setDescription("Here are the tags categorized for your convenience:");
-
-  // 遍历每个类型并添加到嵌入内容中
-  for (const category in tagsJson) {
-    if (tagsJson.hasOwnProperty(category)) {
-      const tags = tagsJson[category].join("\n"); // 将标签转换为每行一个
-      embed.addFields({
-        name: `**${category}**`,  // 作为标题显示类别
-        value: tags,  // 每行一个标签，增强可读性
-      });
-    }
-  }
-
-  embed.setFooter({ text: "Explore and manage your tags efficiently!" }).setTimestamp();
+    .setDescription(descriptionText)  // 使用整理后的文本内容
+    .setFooter({ text: "Explore and manage your tags efficiently!" })
+    .setTimestamp();
 
   return { embed };
 }
+
 
 
 module.exports = {

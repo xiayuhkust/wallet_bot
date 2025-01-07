@@ -75,8 +75,11 @@ function getTagsViewTemplate(tagsJson) {
   // 遍历每个类型并添加到嵌入内容中
   for (const category in tagsJson) {
     if (tagsJson.hasOwnProperty(category)) {
-      const tags = tagsJson[category].join(", ");
-      embed.addFields({ name: `**${category}**`, value: tags });
+      const tags = tagsJson[category].join("\n"); // 将标签转换为每行一个
+      embed.addFields({
+        name: `**${category}**`,  // 作为标题显示类别
+        value: tags,  // 每行一个标签，增强可读性
+      });
     }
   }
 
@@ -84,6 +87,7 @@ function getTagsViewTemplate(tagsJson) {
 
   return { embed };
 }
+
 
 module.exports = {
   getWalletWelcomeTemplate,

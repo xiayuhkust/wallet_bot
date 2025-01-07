@@ -14,6 +14,7 @@ const openai = new OpenAI({
 
 // 处理用户消息的函数
 async function processUserMessage_generalagent(message, topic) {
+    const userMessageContent = message.content;
     // 设置系统消息提示
     const systemMessage = {
         role: 'system',
@@ -23,7 +24,7 @@ async function processUserMessage_generalagent(message, topic) {
     // 用户消息
     const conversationlog = [
         systemMessage,
-        { role: 'user', content: message.content }
+        { role: 'user', content: userMessageContent }
     ];
 
     console.log('System message (messages[0]):', conversationlog[0]);
@@ -36,7 +37,7 @@ async function processUserMessage_generalagent(message, topic) {
             model: "deepseek-chat",
         });
 
-        const responseText = result.choices[0].message.content;
+        const responseText = result.choices[0].userMessageContent.trim();
         console.log('GPT-4o-mini response:', responseText);
 
         // 在响应后附加相关的嵌入界面提示
@@ -75,6 +76,7 @@ const topics = [
 
 // 分类消息的函数
 async function filterManager(message) {
+    const userMessageContent = message.content;
     // 动态构建话题列表
     const topicsList = topics.join(", ");
 
@@ -85,7 +87,7 @@ async function filterManager(message) {
 
     const conversationlog = [
         systemMessage,
-        { role: 'user', content: message.content }
+        { role: 'user', content: userMessageContent }
     ];
 
     try {
@@ -95,7 +97,7 @@ async function filterManager(message) {
             model: "deepseek-chat",
         });
 
-        const responseText = result.choices[0].message.content.trim();
+        const responseText = result.choices[0].userMessageContent.trim();
         console.log('FilterManager response:', responseText);
 
         // 确保返回的分类是预定义的某个话题

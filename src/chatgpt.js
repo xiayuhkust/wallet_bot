@@ -26,6 +26,9 @@ async function processUserMessage_generalagent(message, topic) {
         { role: 'user', content: message }
     ];
 
+    console.log('System message (messages[0]):', conversationlog[0]);
+    console.log('User message (messages[1]):', conversationlog[1]);
+
     try {
         // 调用 GPT-4o-mini 完成对话
         const result = await openai.chat.completions.create({

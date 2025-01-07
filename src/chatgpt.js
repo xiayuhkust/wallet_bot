@@ -1,8 +1,15 @@
 const { OpenAI } = require('openai');
 require('dotenv/config');
+/*
 // 创建 OpenAI 客户端
 const openai = new OpenAI({
     apiKey: process.env.OpenAIAPIKey,
+});
+*/
+// 创建 DeepSeek 客户端
+const openai = new OpenAI({
+    baseURL: 'https://api.deepseek.com',
+    DeepSeekAPI: process.env.OpenAIAPIKey,
 });
 
 // 处理用户消息的函数

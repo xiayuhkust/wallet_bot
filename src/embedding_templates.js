@@ -62,8 +62,32 @@ function getWalletMainTemplate(userName, turaAddress, turaBalance, tagsBalance) 
   return { embed, buttons };
 }
 
+/**
+ * 创建查看 Tag 的 Embedding 模板
+ */
+function getTagsViewTemplate(tagsJson) {
+  // 构建嵌入内容
+  const embed = new EmbedBuilder()
+    .setColor(0xffa500) // 设置主题颜色
+    .setTitle("🔖 TagFusion Tags Overview")
+    .setDescription("Here are the tags categorized for your convenience:");
+
+  // 遍历每个类型并添加到嵌入内容中
+  for (const category in tagsJson) {
+    if (tagsJson.hasOwnProperty(category)) {
+      const tags = tagsJson[category].join(", ");
+      embed.addFields({ name: `**${category}**`, value: tags });
+    }
+  }
+
+  embed.setFooter({ text: "Explore and manage your tags efficiently!" }).setTimestamp();
+
+  return { embed };
+}
+
 module.exports = {
   getWalletWelcomeTemplate,
   getWalletMainTemplate,
+  getTagsViewTemplate,
 };
 

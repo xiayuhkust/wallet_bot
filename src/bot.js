@@ -2,10 +2,11 @@ require("dotenv").config();
 const { Client, GatewayIntentBits, PermissionsBitField, ChannelType } = require("discord.js");
 const { connectToDatabase, getClient } = require("./db");
 const { handlePrivateChannelMessage } = require("./private_channel_service"); // 引入服务逻辑
-const { getWalletWelcomeTemplate,getWalletMainTemplate } = require("./embedding_templates");
+const { getWalletWelcomeTemplate,getWalletMainTemplate,getTagsViewTemplate } = require("./embedding_templates");
 const { registerNewWallet,  restoreWallet_Mnemonic,  restoreWallet_PrivateKey, getBalances } = require("./walletController"); // 假设 wallet.js 处理钱包逻辑
 const { checkWallet,recordFaucetClaim ,checkFaucetClaim} = require("../models/wallet");
 const { getFaucet,sendFaucet } = require("./Faucet");
+const { filterManager,processUserMessage_generalagent} = require("./chatgpt");
 // 从 .env 文件加载配置
 const TOKEN = process.env.TagfusionBotToken;
 
@@ -63,6 +64,48 @@ async function updateUserWalletAddresses(userId) {
     return false;
   }
 }
+
+async function cleanupFrontDeskChannels(guild) {
+  try {
+    const categoryName = "FrontDesk";
+    const category = guild.channels.cache.find(
+      (channel) => channel.type === ChannelType.GuildCategory && channel.name === categoryName
+    );
+
+    if (!category) {
+      console.log("[INFO] No FrontDesk category found for cleanup.");
+      return;
+    }
+
+    const channelsInCategory = guild.channels.cache.filter(
+      (channel) => channel.parentId === category.id && channel.type === ChannelType.GuildText
+    );
+
+    for (const [channelId, channel] of channelsInCategory) {
+      await channel.delete();
+      console.log(`[INFO] Deleted channel: ${channel.name}`);
+    }
+
+    console.log("[INFO] Cleanup of FrontDesk channels completed.");
+  } catch (error) {
+    console.error("[ERROR] Failed to cleanup FrontDesk channels:", error);
+  }
+}
+
+process.on("exit", async () => {
+    const guild = client.guilds.cache.first(); // Assuming the bot is in only one guild
+  if (guild) {
+    await cleanupFrontDeskChannels(guild);
+  }
+});
+
+process.on("SIGINT", async () => {
+  process.exit();
+});
+
+process.on("SIGTERM", async () => {
+  process.exit();
+});
 // 确保 FrontDesk 类别存在
 async function ensureFrontDeskCategory(guild) {
   const categoryName = "FrontDesk";
@@ -276,10 +319,6 @@ client.on("interactionCreate", async (interaction) => {
 
       // 验证命令是否在用户的私密频道中
       if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
-        await interaction.reply({
-          content: "You are not authorized to interact in this channel.",
-          ephemeral: true, // 仅对当前用户显示
-        });
         return; // 停止进一步处理
       }
 
@@ -306,10 +345,6 @@ client.on("interactionCreate", async (interaction) => {
         const channelId = interaction.channel.id;
       // 验证按钮交互是否在用户的私密频道中
       if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
-        await interaction.reply({
-          content: "You are not authorized to interact in this channel.",
-          ephemeral: true, // 仅对当前用户显示
-        });
         return; // 停止进一步处理
       }
       console.log(`[INFO] Handling command: /restore_wallet from user ${interaction.user.tag}`);
@@ -359,10 +394,6 @@ client.on("interactionCreate", async (interaction) => {
     
     // 验证按钮交互是否在用户的私密频道中
     if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
-      await interaction.reply({
-      content: "You are not authorized to interact in this channel.",
-      ephemeral: true, // 仅对当前用户显示
-      });
       return; // 停止进一步处理
     }
     
@@ -472,7 +503,7 @@ client.on("interactionCreate", async (interaction) => {
             await interaction.followUp({
             content: `🎉 **Congratulations!** You have received your daily rewards:\n\n` +
               `**Amount:** 0.1 TURA\n\n` +
-              `**New TURA Balance:** ${newTuraBalance} TURA\n\n` +
+              `**New TURA Balance:** ${newTuraBalance.toFixed(4)} TURA\n\n` +
               `Come back tomorrow for more rewards!`,
             ephemeral: true,
             });
@@ -505,18 +536,70 @@ client.on("interactionCreate", async (interaction) => {
     }
 });
 
-/*
+// 处理用户消息并分类的主函数
+async function handleMessage(message) {
+  // 先分类消息
+  const topic = await filterManager(message);
+  //console.log('Message category:', category);
+  // 根据检测到的主题将消息传递给 processUserMessage_generalagent 生成回复
+  const response = await processUserMessage_generalagent(message, topic);
+  //console.log('Response from General Agent:', response);  // 打印生成的回复
+  // 根据分类处理消息
+  switch (category) {
+      case 'Account Information':
+      case 'Transfer Services':
+      case 'Account Security and Privacy':
+      case 'Claiming Rewards':
+      case 'Tag Services':
+        const { embed, buttons } = getTagsViewTemplate({
+          "Dex": [
+            "Uniswap",
+            "SushiSwap",
+            "PancakeSwap",
+            "Curve Finance",
+            "1inch",
+            "Balancer"
+          ],
+          "GameFi": [
+            "Axie Infinity",
+            "The Sandbox",
+            "Decentraland",
+            "Illuvium",
+            "Gods Unchained",
+            "Star Atlas"
+          ]
+        });
+        await message.channel.send({
+          embeds: [embed],
+          components: [buttons],
+        });
+      case 'Casual Chat':
+      default:
+        await interaction.reply({
+          content: response,
+          ephemeral: true,
+        });
+  }
+
+
+
+
+}
+
 // 监听私密频道中的消息
 client.on("messageCreate", (message) => {
   if (message.author.bot) return;
 
   // 验证消息是否来自有效的私密频道
-  if (!isMessageFromValidChannel(message.author.id, message.channel.id)) {
-    return; // 忽略其他频道的消息
+  const userId = message.author.id;
+  const channelId = message.channel.id;
+
+  if (!userChannels.has(userId) || userChannels.get(userId) !== channelId) {
+    return; // 忽略其他频道的消息以及来
   }
-  handlePrivateChannelMessage(message); // 委托给服务文件
+  handleMessage(message); // 委托给服务文件
 });
-*/
+
 // 登录机器人
 client.login(TOKEN).then(() => {
   console.log("[INFO] Bot logged in successfully.");
